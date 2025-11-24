@@ -2,7 +2,7 @@ terraform {
   required_version = ">= 1.3.0"
 
   cloud {
-    organization = "YOUR_HCP_ORG"
+    organization = "Exercises"
     workspaces {
       name = "ecs-fargate-7-services"
     }
