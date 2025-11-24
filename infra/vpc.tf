@@ -23,26 +23,39 @@ resource "aws_internet_gateway" "igw" {
 }
 
 #########################################
-# Public Subnets
+# Subnet CIDRs
 #########################################
 
 locals {
-  public_subnets = [
-    "10.0.1.0/24",
-    "10.0.2.0/24"
-  ]
+  # PUBLIC SUBNETS (must be in different AZs)
+  public_subnets = {
+    a = "10.0.1.0/24"
+    b = "10.0.2.0/24"
+  }
 
-  private_subnets = [
-    "10.0.11.0/24",
-    "10.0.12.0/24"
-  ]
+  # PRIVATE SUBNETS (must be in different AZs)
+  private_subnets = {
+    a = "10.0.11.0/24"
+    b = "10.0.12.0/24"
+  }
+
+  azs = {
+    a = "us-east-1a"
+    b = "us-east-1b"
+  }
 }
 
-resource "aws_subnet" "public" {
-  for_each = { for idx, cidr in local.public_subnets : idx => cidr }
+#########################################
+# Public Subnets
+#########################################
 
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = each.value
+resource "aws_subnet" "public" {
+  for_each = local.public_subnets
+
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = each.value
+  availability_zone = local.azs[each.key]
+
   map_public_ip_on_launch = true
 
   tags = {
@@ -55,10 +68,12 @@ resource "aws_subnet" "public" {
 #########################################
 
 resource "aws_subnet" "private" {
-  for_each = { for idx, cidr in local.private_subnets : idx => cidr }
+  for_each = local.private_subnets
 
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = each.value
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = each.value
+  availability_zone = local.azs[each.key]
+
   map_public_ip_on_launch = false
 
   tags = {
@@ -67,7 +82,7 @@ resource "aws_subnet" "private" {
 }
 
 #########################################
-# Public Route Table + Routes
+# Public Route Table + Assoc
 #########################################
 
 resource "aws_route_table" "public" {
@@ -86,8 +101,8 @@ resource "aws_route_table" "public" {
 resource "aws_route_table_association" "public_assoc" {
   for_each = aws_subnet.public
 
-  subnet_id      = each.value.id
   route_table_id = aws_route_table.public.id
+  subnet_id      = each.value.id
 }
 
 #########################################
@@ -113,21 +128,25 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = "myproject-alb-sg"
+  }
 }
 
 #########################################
-# Security Group – ECS
+# Security Group – ECS Tasks
 #########################################
 
 resource "aws_security_group" "ecs_sg" {
   name        = "myproject-ecs-sg"
   vpc_id      = aws_vpc.this.id
-  description = "Allow App traffic from ALB"
+  description = "Allow app traffic from ALB"
 
   ingress {
-    description    = "Allow traffic from ALB"
-    from_port       = 3000
-    to_port         = 3000
+    description    = "Allow ALB → ECS"
+    from_port       = 80   # ECS container port
+    to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
@@ -138,10 +157,14 @@ resource "aws_security_group" "ecs_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Name = "myproject-ecs-sg"
+  }
 }
 
 #########################################
-# Outputs (still inside same file)
+# Outputs
 #########################################
 
 output "vpc_id" {
@@ -149,11 +172,15 @@ output "vpc_id" {
 }
 
 output "public_subnet_ids" {
-  value = [for s in aws_subnet.public : s.id]
+  value = [
+    for s in aws_subnet.public : s.id
+  ]
 }
 
 output "private_subnet_ids" {
-  value = [for s in aws_subnet.private : s.id]
+  value = [
+    for s in aws_subnet.private : s.id
+  ]
 }
 
 output "alb_sg_id" {
