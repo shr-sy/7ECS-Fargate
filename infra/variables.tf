@@ -1,25 +1,39 @@
+# ---------------------------
+# AWS & Project Settings
+# ---------------------------
 variable "aws_region" {
-  default = "us-east-1"
+  description = "AWS region to deploy resources"
+  type        = string
+  default     = "us-east-1"
 }
 
 variable "project_name" {
-  default = "hcp-ecs-7svc"
+  description = "Base name for all resources"
+  type        = string
+  default     = "hcp-ecs-7svc"
 }
 
+# ---------------------------
+# GitHub Settings
+# ---------------------------
 variable "github_repo" {
   description = "GitHub repository in owner/repo format"
+  type        = string
   default     = "shr-sy/7ECS-Fargate"
 }
 
-# DO NOT store token in variables.tf — put it in TF Cloud or TFVars
 variable "github_oauth_token" {
   description = "GitHub token (store securely in Terraform Cloud variables)"
   type        = string
 }
 
-# List of microservices
+# ---------------------------
+# Microservices
+# ---------------------------
 variable "services" {
-  type = list(string)
+  description = "List of microservices"
+  type        = list(string)
+
   default = [
     "auth",
     "users",
@@ -31,9 +45,9 @@ variable "services" {
   ]
 }
 
-# Port mapping for each service (required for ALB target groups)
 variable "service_ports" {
-  type = map(number)
+  description = "Port mapping for each microservice"
+  type        = map(number)
 
   default = {
     auth           = 3001
@@ -46,14 +60,38 @@ variable "service_ports" {
   }
 }
 
+# 🚨 IMPORTANT: Tell ECS which service is the MAIN service to run
+variable "main_service" {
+  description = "Which service ECS should run as the main container/service"
+  type        = string
+  default     = "auth"
+}
+
+# ---------------------------
+# Networking (VPC/Subnets)
+# ---------------------------
 variable "vpc_cidr" {
-  default = "10.0.0.0/16"
+  description = "CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
 }
 
 variable "public_subnets" {
-  default = ["10.0.1.0/24", "10.0.2.0/24"]
+  description = "Public subnets for ALB"
+  type        = list(string)
+
+  default = [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ]
 }
 
 variable "private_subnets" {
-  default = ["10.0.11.0/24", "10.0.12.0/24"]
+  description = "Private subnets for ECS Fargate tasks"
+  type        = list(string)
+
+  default = [
+    "10.0.11.0/24",
+    "10.0.12.0/24"
+  ]
 }
