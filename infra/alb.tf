@@ -7,15 +7,15 @@ resource "aws_lb" "alb" {
   security_groups    = [aws_security_group.alb_sg.id]
 }
 
-# --- Target Groups for 7 Microservices ---
+# --- Target Groups for All Microservices ---
 resource "aws_lb_target_group" "tg" {
   for_each = toset(var.services)
 
   name        = "${var.project_name}-${each.value}-tg"
-  port        = 3000
+  port        = var.service_ports[each.value]
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = aws_vpc.this.id
 
   health_check {
     path     = "/health"
@@ -46,7 +46,7 @@ resource "aws_lb_listener_rule" "rules" {
 
   listener_arn = aws_lb_listener.http.arn
 
-  # Priority must be unique
+  # Priority must be unique (100–107 for 7 services)
   priority = 100 + index(var.services, each.value)
 
   action {
