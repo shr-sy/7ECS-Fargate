@@ -1,12 +1,19 @@
-resource "aws_s3_bucket" "cp_bucket" {
-  bucket = lower("${var.project_name}-codepipeline-${random_id.bucket_id.hex}")
-  acl    = "private"
-}
-
 resource "random_id" "bucket_id" {
   byte_length = 4
 }
 
+# --- S3 Bucket for CodePipeline Artifacts ---
+resource "aws_s3_bucket" "cp_bucket" {
+  bucket = lower("${var.project_name}-codepipeline-${random_id.bucket_id.hex}")
+}
+
+# AWS now requires a separate bucket ACL resource
+resource "aws_s3_bucket_acl" "cp_bucket_acl" {
+  bucket = aws_s3_bucket.cp_bucket.id
+  acl    = "private"
+}
+
+# --- CodePipeline ---
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline.arn
@@ -16,6 +23,7 @@ resource "aws_codepipeline" "pipeline" {
     type     = "S3"
   }
 
+  # --- Source Stage ---
   stage {
     name = "Source"
 
@@ -36,6 +44,7 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  # --- Build Stage ---
   stage {
     name = "Build"
 
@@ -44,6 +53,7 @@ resource "aws_codepipeline" "pipeline" {
       category         = "Build"
       owner            = "AWS"
       provider         = "CodeBuild"
+      version          = "1"
       input_artifacts  = ["source_output"]
       output_artifacts = ["build_output"]
 
@@ -53,6 +63,7 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  # --- Deploy Stage ---
   stage {
     name = "Deploy"
 
@@ -61,14 +72,12 @@ resource "aws_codepipeline" "pipeline" {
       category        = "Deploy"
       owner           = "AWS"
       provider        = "ECS"
+      version         = "1"
       input_artifacts = ["build_output"]
 
       configuration = {
         ClusterName = aws_ecs_cluster.main.name
-        # FileName is used by the ECS plugin to read imagedefinitions.json produced by build
         FileName    = "imagedefinitions.json"
-        # ServiceName left intentionally blank here; pipeline will use imagedefinitions.json
-        # to update task definitions. If you want to target a specific service, set it here.
         ServiceName = ""
       }
     }
