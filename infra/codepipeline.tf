@@ -9,10 +9,17 @@ resource "random_id" "bucket_id" {
 # S3 Bucket for CodePipeline Artifacts
 ########################################
 resource "aws_s3_bucket" "cp_bucket" {
-  bucket        = "${var.project_name}-cp-${random_string.rand.id}"
+  bucket        = "${var.project_name}-cp-${random_id.bucket_id.hex}"
   force_destroy = true
+
+  tags = {
+    Name = "${var.project_name}-cp-bucket"
+  }
 }
 
+########################################
+# Ownership Controls (required because ACLs are disabled)
+########################################
 resource "aws_s3_bucket_ownership_controls" "cp_bucket_ownership" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -21,6 +28,9 @@ resource "aws_s3_bucket_ownership_controls" "cp_bucket_ownership" {
   }
 }
 
+########################################
+# Block Public Access (must come after bucket creation)
+########################################
 resource "aws_s3_bucket_public_access_block" "cp_bucket_pab" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -31,7 +41,7 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_pab" {
 }
 
 ########################################
-# CodeStar Connection for GitHub (v2 Source Action)
+# GitHub CodeStar Connection (Source)
 ########################################
 resource "aws_codestarconnections_connection" "github" {
   name          = "${var.project_name}-github-connection"
@@ -66,7 +76,7 @@ resource "aws_codepipeline" "pipeline" {
 
       configuration = {
         ConnectionArn    = aws_codestarconnections_connection.github.arn
-        FullRepositoryId = var.github_repo   # "shr-sy/7ECS-Fargate"
+        FullRepositoryId = var.github_repo
         BranchName       = "main"
       }
     }
@@ -88,7 +98,6 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["build_output"]
 
       configuration = {
-        # FIXED: build → build_all
         ProjectName = aws_codebuild_project.build_all.name
       }
     }
@@ -117,7 +126,7 @@ resource "aws_codepipeline" "pipeline" {
 }
 
 ########################################
-# CodePipeline Role
+# CodePipeline IAM Role
 ########################################
 resource "aws_iam_role" "codepipeline_role" {
   name = "${var.project_name}-codepipeline-role"
@@ -126,12 +135,22 @@ resource "aws_iam_role" "codepipeline_role" {
     Version = "2012-10-17"
     Statement = [{
       Effect = "Allow"
-      Principal = { Service = "codepipeline.amazonaws.com" }
+      Principal = {
+        Service = "codepipeline.amazonaws.com"
+      }
       Action = "sts:AssumeRole"
     }]
   })
+
+  # Avoids "role already exists" error
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
+########################################
+# Attach AWSCodePipelineFullAccess
+########################################
 resource "aws_iam_policy_attachment" "cp_policy_attach" {
   name       = "${var.project_name}-cp-policy-attach"
   roles      = [aws_iam_role.codepipeline_role.name]
