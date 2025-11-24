@@ -1,3 +1,4 @@
+# --- ALB ---
 resource "aws_lb" "alb" {
   name               = "${var.project_name}-alb"
   internal           = false
@@ -6,13 +7,15 @@ resource "aws_lb" "alb" {
   security_groups    = [aws_security_group.alb_sg.id]
 }
 
+# --- Target Groups for 7 Microservices ---
 resource "aws_lb_target_group" "tg" {
   for_each = toset(var.services)
 
-  name     = "${var.project_name}-${each.key}-tg"
-  port     = 3000
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.this.id
+  name        = "${var.project_name}-${each.value}-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
 
   health_check {
     path     = "/health"
@@ -20,9 +23,10 @@ resource "aws_lb_target_group" "tg" {
   }
 }
 
+# --- ALB Listener ---
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.alb.arn
-  port              = "80"
+  port              = 80
   protocol          = "HTTP"
 
   default_action {
@@ -36,20 +40,26 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# --- Listener Rules for Each Service ---
 resource "aws_lb_listener_rule" "rules" {
   for_each = toset(var.services)
 
   listener_arn = aws_lb_listener.http.arn
-  priority     = 100 + tonumber(format("%d", index(var.services, each.key)))
+
+  # Priority must be unique
+  priority = 100 + index(var.services, each.value)
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.tg[each.key].arn
+    target_group_arn = aws_lb_target_group.tg[each.value].arn
   }
 
   condition {
     path_pattern {
-      values = ["/${each.key}/*", "/${each.key}"]
+      values = [
+        "/${each.value}/*",
+        "/${each.value}"
+      ]
     }
   }
 }
