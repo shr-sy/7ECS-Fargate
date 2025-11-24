@@ -9,12 +9,25 @@ resource "random_id" "bucket_id" {
 # S3 Bucket for CodePipeline Artifacts
 ########################################
 resource "aws_s3_bucket" "cp_bucket" {
-  bucket = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
+  bucket        = "${var.project_name}-cp-${random_string.rand.id}"
+  force_destroy = true
 }
 
-resource "aws_s3_bucket_acl" "cp_bucket_acl" {
+resource "aws_s3_bucket_ownership_controls" "cp_bucket_ownership" {
   bucket = aws_s3_bucket.cp_bucket.id
-  acl    = "private"
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "cp_bucket_pab" {
+  bucket = aws_s3_bucket.cp_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 ########################################
