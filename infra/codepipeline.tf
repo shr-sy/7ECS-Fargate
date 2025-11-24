@@ -38,7 +38,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ########################################
-  # SOURCE Stage (GitHub v2)
+  # SOURCE STAGE
   ########################################
   stage {
     name = "Source"
@@ -52,15 +52,15 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn = aws_codestarconnections_connection.github.arn
-        FullRepositoryId = var.github_repo       # "shr-sy/7ECS-Fargate"
+        ConnectionArn    = aws_codestarconnections_connection.github.arn
+        FullRepositoryId = var.github_repo   # "shr-sy/7ECS-Fargate"
         BranchName       = "main"
       }
     }
   }
 
   ########################################
-  # BUILD Stage (CodeBuild)
+  # BUILD STAGE
   ########################################
   stage {
     name = "Build"
@@ -75,13 +75,14 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["build_output"]
 
       configuration = {
-        ProjectName = aws_codebuild_project.build.name
+        # FIXED: build → build_all
+        ProjectName = aws_codebuild_project.build_all.name
       }
     }
   }
 
   ########################################
-  # DEPLOY Stage — ECS Deploy via imagedefinitions.json
+  # DEPLOY STAGE
   ########################################
   stage {
     name = "Deploy"
@@ -103,7 +104,7 @@ resource "aws_codepipeline" "pipeline" {
 }
 
 ########################################
-# Permissions Required for CodePipeline
+# CodePipeline Role
 ########################################
 resource "aws_iam_role" "codepipeline_role" {
   name = "${var.project_name}-codepipeline-role"
