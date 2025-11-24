@@ -1,0 +1,22 @@
+version: 0.2
+env:
+  variables:
+    AWS_REGION: ${AWS_REGION}
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+  build:
+    commands:
+      - echo Building Docker image for users
+      - docker build -t $ECR_REPO:latest .
+      - docker tag $ECR_REPO:latest $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPO:$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - docker push $ECR_REPO:latest
+  post_build:
+    commands:
+      - printf '[{"name":"users","imageUri":"%s:latest"}]' "$ECR_REPO" > imagedefinitions.json || true
+artifacts:
+  files:
+    - imagedefinitions.json

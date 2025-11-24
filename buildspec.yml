@@ -1,0 +1,39 @@
+version: 0.2
+env:
+  variables:
+    AWS_DEFAULT_REGION: "ap-south-1"
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - echo "Logging into ECR"
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+  build:
+    commands:
+      - echo Building and pushing images for all microservices...
+      - |
+        for svc in microservices/*; do
+          NAME=$(basename $svc)
+          echo "Building $NAME"
+          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
+          docker tag $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
+        done
+  post_build:
+    commands:
+      - echo Generating imagedefinitions.json for ECS (services array)
+      - |
+        python3 - <<'PY'
+import json, os
+services = [d for d in os.listdir('microservices') if os.path.isdir(os.path.join('microservices', d))]
+arr = []
+for s in services:
+    arr.append({"name": s, "imageUri": f"{os.environ['AWS_ACCOUNT_ID']}.dkr.ecr.{os.environ['AWS_DEFAULT_REGION']}.amazonaws.com/{s}:latest"})
+print(json.dumps(arr))
+open('imagedefinitions.json','w').write(json.dumps(arr))
+PY
+artifacts:
+  files:
+    - imagedefinitions.json
