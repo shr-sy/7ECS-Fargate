@@ -27,13 +27,11 @@ resource "aws_internet_gateway" "igw" {
 #########################################
 
 locals {
-  # PUBLIC SUBNETS (must be in different AZs)
   public_subnets = {
     a = "10.0.1.0/24"
     b = "10.0.2.0/24"
   }
 
-  # PRIVATE SUBNETS (must be in different AZs)
   private_subnets = {
     a = "10.0.11.0/24"
     b = "10.0.12.0/24"
@@ -52,10 +50,9 @@ locals {
 resource "aws_subnet" "public" {
   for_each = local.public_subnets
 
-  vpc_id            = aws_vpc.this.id
-  cidr_block        = each.value
-  availability_zone = local.azs[each.key]
-
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = each.value
+  availability_zone       = local.azs[each.key]
   map_public_ip_on_launch = true
 
   tags = {
@@ -70,10 +67,9 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   for_each = local.private_subnets
 
-  vpc_id            = aws_vpc.this.id
-  cidr_block        = each.value
-  availability_zone = local.azs[each.key]
-
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = each.value
+  availability_zone       = local.azs[each.key]
   map_public_ip_on_launch = false
 
   tags = {
@@ -82,7 +78,7 @@ resource "aws_subnet" "private" {
 }
 
 #########################################
-# Public Route Table + Assoc
+# Public Route Table + Association
 #########################################
 
 resource "aws_route_table" "public" {
@@ -109,17 +105,17 @@ resource "aws_route_table_association" "public_assoc" {
 # Security Group – ALB
 #########################################
 
-resource "aws_security_group" "ecs_sg" {
-  name        = "${var.project_name}-ecs-sg"
+resource "aws_security_group" "alb_sg" {
+  name        = "myproject-alb-sg"
   vpc_id      = aws_vpc.this.id
-  description = "Allow traffic from ALB"
+  description = "Security group for ALB"
 
   ingress {
-    description    = "ALB to ECS traffic"
-    from_port       = 3000
-    to_port         = 3000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
+    description = "Allow HTTP traffic"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -128,7 +124,7 @@ resource "aws_security_group" "ecs_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
+
   tags = {
     Name = "myproject-alb-sg"
   }
@@ -141,11 +137,11 @@ resource "aws_security_group" "ecs_sg" {
 resource "aws_security_group" "ecs_sg" {
   name        = "myproject-ecs-sg"
   vpc_id      = aws_vpc.this.id
-  description = "Allow app traffic from ALB"
+  description = "Allow traffic from ALB"
 
   ingress {
-    description    = "Allow ALB → ECS"
-    from_port       = 80   # ECS container port
+    description    = "ALB to ECS traffic"
+    from_port       = 80        # service port to update later
     to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
@@ -172,15 +168,11 @@ output "vpc_id" {
 }
 
 output "public_subnet_ids" {
-  value = [
-    for s in aws_subnet.public : s.id
-  ]
+  value = [for s in aws_subnet.public : s.id]
 }
 
 output "private_subnet_ids" {
-  value = [
-    for s in aws_subnet.private : s.id
-  ]
+  value = [for s in aws_subnet.private : s.id]
 }
 
 output "alb_sg_id" {
