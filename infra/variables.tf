@@ -1,7 +1,7 @@
-variable "aws_region" { default = "ap-south-1" }
+variable "aws_region" { default = "us-east-1" }
 variable "project_name" { default = "hcp-ecs-7svc" }
-variable "github_repo" { description = "owner/repo" }
-variable "github_oauth_token" { description = "GitHub OAuth token (sensitive)" }
+variable "github_repo" { description = "shr-sy/7ECS-Fargate" }
+variable "github_oauth_token" { description = "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" }
 
 variable "services" {
   type = list(string)
