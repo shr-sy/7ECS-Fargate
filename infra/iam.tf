@@ -1,3 +1,8 @@
+#########################################
+# IAM Roles & Policies for CodeBuild, ECS, CodePipeline
+#########################################
+
+# --- CodeBuild Role ---
 data "aws_iam_policy_document" "codebuild_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -45,42 +50,7 @@ resource "aws_iam_role_policy" "codebuild_policy_attach" {
   policy = data.aws_iam_policy_document.codebuild_policy.json
 }
 
-data "aws_iam_policy_document" "codepipeline_assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["codepipeline.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role" "codepipeline" {
-  name               = "${var.project_name}-codepipeline-role"
-  assume_role_policy = data.aws_iam_policy_document.codepipeline_assume.json
-}
-
-data "aws_iam_policy_document" "codepipeline_policy" {
-  statement {
-    actions = [
-      "codebuild:StartBuild",
-      "codebuild:BatchGetBuilds",
-      "s3:*",
-      "ecs:UpdateService",
-      "ecs:DescribeServices",
-      "iam:PassRole"
-    ]
-    resources = ["*"]
-  }
-}
-
-resource "aws_iam_role_policy" "codepipeline_policy_attach" {
-  name   = "${var.project_name}-codepipeline-policy"
-  role   = aws_iam_role.codepipeline.id
-  policy = data.aws_iam_policy_document.codepipeline_policy.json
-}
-
+# --- ECS Task Execution Role ---
 data "aws_iam_policy_document" "ecs_task_exec_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -100,4 +70,32 @@ resource "aws_iam_role" "ecs_task_exec" {
 resource "aws_iam_role_policy_attachment" "ecs_exec_attach" {
   role       = aws_iam_role.ecs_task_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# --- CodePipeline Role ---
+data "aws_iam_policy_document" "codepipeline_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["codepipeline.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "codepipeline_role" {
+  name               = "${var.project_name}-codepipeline-role"
+  assume_role_policy = data.aws_iam_policy_document.codepipeline_assume.json
+
+  # Avoids destroy before create conflicts
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_iam_policy_attachment" "cp_policy_attach" {
+  name       = "${var.project_name}-cp-policy-attach"
+  roles      = [aws_iam_role.codepipeline_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodePipelineFullAccess"
 }
