@@ -85,10 +85,9 @@ data "aws_iam_policy_document" "codepipeline_assume" {
 }
 
 resource "aws_iam_role" "codepipeline_role" {
-  name               = "${var.project_name}-codepipeline-role"
+  name = "${var.project_name}-codepipeline-role-new"  # <- changed
   assume_role_policy = data.aws_iam_policy_document.codepipeline_assume.json
 
-  # Avoids destroy before create conflicts
   lifecycle {
     create_before_destroy = true
   }
