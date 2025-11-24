@@ -7,10 +7,16 @@ resource "aws_s3_bucket" "cp_bucket" {
   bucket = lower("${var.project_name}-codepipeline-${random_id.bucket_id.hex}")
 }
 
-# AWS now requires a separate bucket ACL resource
+# ACL must be separate (AWS requirement)
 resource "aws_s3_bucket_acl" "cp_bucket_acl" {
   bucket = aws_s3_bucket.cp_bucket.id
   acl    = "private"
+}
+
+# --- GitHub CodeStar Connection ---
+resource "aws_codestarconnections_connection" "github" {
+  name          = "${var.project_name}-github"
+  provider_type = "GitHub"
 }
 
 # --- CodePipeline ---
@@ -23,28 +29,31 @@ resource "aws_codepipeline" "pipeline" {
     type     = "S3"
   }
 
-  # --- Source Stage ---
+  # ==============================
+  # SOURCE STAGE (GitHub V2)
+  # ==============================
   stage {
     name = "Source"
 
     action {
       name             = "Source"
       category         = "Source"
-      owner            = "ThirdParty"
-      provider         = "GitHub"
+      owner            = "AWS"
+      provider         = "CodeStarSourceConnection"
       version          = "1"
       output_artifacts = ["source_output"]
 
       configuration = {
-        Owner      = split("/", var.github_repo)[0]
-        Repo       = split("/", var.github_repo)[1]
-        Branch     = "main"
-        OAuthToken = var.github_oauth_token
+        ConnectionArn    = aws_codestarconnections_connection.github.arn
+        FullRepositoryId = var.github_repo     # example: shruti/myrepo
+        BranchName       = "main"
       }
     }
   }
 
-  # --- Build Stage ---
+  # ==============================
+  # BUILD STAGE
+  # ==============================
   stage {
     name = "Build"
 
@@ -63,22 +72,24 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  # --- Deploy Stage ---
+  # ==============================
+  # DEPLOY STAGE (ECS)
+  # ==============================
   stage {
     name = "Deploy"
 
     action {
-      name            = "DeployToECS"
-      category        = "Deploy"
-      owner           = "AWS"
-      provider        = "ECS"
-      version         = "1"
-      input_artifacts = ["build_output"]
+      name             = "DeployToECS"
+      category         = "Deploy"
+      owner            = "AWS"
+      provider         = "ECS"
+      version          = "1"
+      input_artifacts  = ["build_output"]
 
       configuration = {
         ClusterName = aws_ecs_cluster.main.name
+        ServiceName = aws_ecs_service.main.name
         FileName    = "imagedefinitions.json"
-        ServiceName = ""
       }
     }
   }
