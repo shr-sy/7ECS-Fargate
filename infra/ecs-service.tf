@@ -31,10 +31,10 @@ resource "aws_ecs_service" "main" {
   desired_count   = 1
 
   network_configuration {
-    subnets          = var.private_subnets
-    security_groups   = [aws_security_group.ecs_tasks.id]
-    assign_public_ip  = false
-  }
+  subnets         = [for s in aws_subnet.private : s.id]  # correct
+  security_groups = [aws_security_group.ecs_sg.id]
+  assign_public_ip = false
+}
 
   load_balancer {
     target_group_arn = aws_lb_target_group.tg[var.main_service].arn
