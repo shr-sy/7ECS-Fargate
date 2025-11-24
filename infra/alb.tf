@@ -7,7 +7,7 @@ resource "aws_lb" "alb" {
   security_groups    = [aws_security_group.alb_sg.id]
 }
 
-# --- Target Groups for All Microservices ---
+# --- Target Groups for All Services ---
 resource "aws_lb_target_group" "tg" {
   for_each = toset(var.services)
 
@@ -23,7 +23,7 @@ resource "aws_lb_target_group" "tg" {
   }
 }
 
-# --- ALB Listener ---
+# --- Listener ---
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.alb.arn
   port              = 80
@@ -40,13 +40,12 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# --- Listener Rules for Each Service ---
+# --- Listener Rules ---
 resource "aws_lb_listener_rule" "rules" {
   for_each = toset(var.services)
 
   listener_arn = aws_lb_listener.http.arn
 
-  # Priority must be unique (100–107 for 7 services)
   priority = 100 + index(var.services, each.value)
 
   action {
