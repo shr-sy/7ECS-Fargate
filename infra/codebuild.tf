@@ -5,6 +5,10 @@ resource "aws_codebuild_project" "build_all" {
   description  = "Build all microservices and push images to ECR"
   service_role = aws_iam_role.codebuild.arn
 
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
   environment {
     compute_type    = "BUILD_GENERAL1_MEDIUM"
     image           = "aws/codebuild/standard:7.0"
@@ -23,12 +27,14 @@ resource "aws_codebuild_project" "build_all" {
   }
 
   source {
-    type     = "GITHUB"
-    location = "https://github.com/${var.github_repo}.git"
-    buildspec = file("${path.module}/../buildspec.yml")
+    type            = "CODEPIPELINE"
+    buildspec       = file("${path.module}/../buildspec.yml")
   }
 
-  artifacts {
-    type = "NO_ARTIFACTS"
+  logs_config {
+    cloudwatch_logs {
+      group_name  = "/aws/codebuild/${var.project_name}"
+      stream_name = "build"
+    }
   }
 }
