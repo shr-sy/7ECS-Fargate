@@ -1,13 +1,13 @@
-########################################
+#########################################
 # Random ID for S3 Bucket
-########################################
+#########################################
 resource "random_id" "bucket_id" {
   byte_length = 4
 }
 
-########################################
+#########################################
 # S3 Bucket for CodePipeline Artifacts
-########################################
+#########################################
 resource "aws_s3_bucket" "cp_bucket" {
   bucket        = "${var.project_name}-cp-${random_id.bucket_id.hex}"
   force_destroy = true
@@ -17,9 +17,7 @@ resource "aws_s3_bucket" "cp_bucket" {
   }
 }
 
-########################################
-# Ownership Controls (required because ACLs are disabled)
-########################################
+# Ownership Controls (required for ACL-disabled buckets)
 resource "aws_s3_bucket_ownership_controls" "cp_bucket_ownership" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -28,9 +26,7 @@ resource "aws_s3_bucket_ownership_controls" "cp_bucket_ownership" {
   }
 }
 
-########################################
-# Block Public Access (must come after bucket creation)
-########################################
+# Block public access
 resource "aws_s3_bucket_public_access_block" "cp_bucket_pab" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -40,17 +36,17 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_pab" {
   restrict_public_buckets = true
 }
 
-########################################
+#########################################
 # GitHub CodeStar Connection (Source)
-########################################
+#########################################
 resource "aws_codestarconnections_connection" "github" {
   name          = "${var.project_name}-github-connection"
   provider_type = "GitHub"
 }
 
-########################################
+#########################################
 # CodePipeline
-########################################
+#########################################
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
@@ -60,9 +56,7 @@ resource "aws_codepipeline" "pipeline" {
     location = aws_s3_bucket.cp_bucket.id
   }
 
-  ########################################
-  # SOURCE STAGE
-  ########################################
+  # Source Stage
   stage {
     name = "Source"
 
@@ -82,9 +76,7 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ########################################
-  # BUILD STAGE
-  ########################################
+  # Build Stage
   stage {
     name = "Build"
 
@@ -103,9 +95,7 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ########################################
-  # DEPLOY STAGE
-  ########################################
+  # Deploy Stage
   stage {
     name = "Deploy"
 
@@ -124,36 +114,4 @@ resource "aws_codepipeline" "pipeline" {
       }
     }
   }
-}
-
-########################################
-# CodePipeline IAM Role
-########################################
-resource "aws_iam_role" "codepipeline_role" {
-  name = "${var.project_name}-codepipeline-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "codepipeline.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-
-  # Avoids "role already exists" error
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-########################################
-# Attach AWSCodePipelineFullAccess
-########################################
-resource "aws_iam_policy_attachment" "cp_policy_attach" {
-  name       = "${var.project_name}-cp-policy-attach"
-  roles      = [aws_iam_role.codepipeline_role.name]
-  policy_arn = "arn:aws:iam::aws:policy/AWSCodePipelineFullAccess"
 }
