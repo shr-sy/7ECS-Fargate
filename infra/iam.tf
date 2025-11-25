@@ -1,12 +1,10 @@
 #########################################
-# IAM Roles & Policies for CodeBuild, ECS, CodePipeline
+# CodeBuild Role & Policy
 #########################################
 
-# --- CodeBuild Role ---
 data "aws_iam_policy_document" "codebuild_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-
     principals {
       type        = "Service"
       identifiers = ["codebuild.amazonaws.com"]
@@ -50,11 +48,12 @@ resource "aws_iam_role_policy" "codebuild_policy_attach" {
   policy = data.aws_iam_policy_document.codebuild_policy.json
 }
 
-# --- ECS Task Execution Role ---
+#########################################
+# ECS Task Execution Role
+#########################################
 data "aws_iam_policy_document" "ecs_task_exec_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-
     principals {
       type        = "Service"
       identifiers = ["ecs-tasks.amazonaws.com"]
@@ -72,11 +71,12 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_attach" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# --- CodePipeline Role ---
+#########################################
+# CodePipeline Role
+#########################################
 data "aws_iam_policy_document" "codepipeline_assume" {
   statement {
     actions = ["sts:AssumeRole"]
-
     principals {
       type        = "Service"
       identifiers = ["codepipeline.amazonaws.com"]
@@ -85,7 +85,7 @@ data "aws_iam_policy_document" "codepipeline_assume" {
 }
 
 resource "aws_iam_role" "codepipeline_role" {
-  name = "${var.project_name}-codepipeline-role-new"  # <- changed
+  name               = "${var.project_name}-codepipeline-role-new"
   assume_role_policy = data.aws_iam_policy_document.codepipeline_assume.json
 
   lifecycle {
@@ -93,9 +93,62 @@ resource "aws_iam_role" "codepipeline_role" {
   }
 }
 
-resource "aws_iam_policy_attachment" "cp_policy_attach" {
-  name       = "${var.project_name}-cp-policy-attach"
-  roles      = [aws_iam_role.codepipeline_role.name]
-  policy_arn = "arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess" 
+#########################################
+# CodePipeline IAM Policy with CodeStar Permissions
+#########################################
+data "aws_iam_policy_document" "codepipeline_policy_doc" {
+  statement {
+    actions = [
+      "codestar-connections:UseConnection",
+      "codestar-connections:GetConnection",
+      "codestar-connections:ListConnections"
+    ]
+    resources = [
+      aws_codestarconnections_connection.github.arn
+    ]
+  }
+
+  statement {
+    actions = [
+      "codebuild:BatchGetBuilds",
+      "codebuild:StartBuild",
+      "codebuild:BatchGetProjects"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "ecs:DescribeServices",
+      "ecs:UpdateService",
+      "ecs:DescribeClusters"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:ListBucket"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    actions = [
+      "iam:PassRole"
+    ]
+    resources = ["*"]
+  }
 }
 
+resource "aws_iam_policy" "codepipeline_policy" {
+  name   = "${var.project_name}-codepipeline-policy"
+  policy = data.aws_iam_policy_document.codepipeline_policy_doc.json
+}
+
+resource "aws_iam_role_policy_attachment" "cp_policy_attach" {
+  role       = aws_iam_role.codepipeline_role.name
+  policy_arn = aws_iam_policy.codepipeline_policy.arn
+}
