@@ -120,8 +120,6 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   target_action   = "GitHubSource"
   authentication  = "GITHUB_HMAC"
 
-  role_arn = aws_iam_role.codepipeline_role.arn
-
   authentication_configuration {
     secret_token = var.github_webhook_secret
   }
