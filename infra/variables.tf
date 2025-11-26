@@ -39,34 +39,31 @@ variable "github_branch" {
   default     = "main"
 }
 
-# PAT passed from HCP Terraform → stored in AWS Secrets Manager
-variable "github_oauth_token" {
-  description = "GitHub OAuth token (PAT)"
-  type        = string
-  sensitive   = true
-}
-
+# ----------------------------------------------------------------------
+# GitHub OAuth Token (PAT) stored in AWS Secrets Manager
+# ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
-  description = "AWS Secrets Manager name where GitHub PAT will be stored"
+  description = "AWS Secrets Manager secret name containing GitHub PAT"
   type        = string
 }
 
-# Webhook HMAC secret (also stored in AWS Secrets Manager)
+# ----------------------------------------------------------------------
+# GitHub Webhook Secret (stored in Secrets Manager)
+# ----------------------------------------------------------------------
 variable "github_webhook_secret" {
-  description = "HMAC token for GitHub → CodePipeline webhook"
+  description = "HMAC token used by GitHub webhook"
   type        = string
   sensitive   = true
 }
 
 variable "github_webhook_secret_name" {
-  description = "AWS Secrets Manager name for storing GitHub webhook secret"
+  description = "Secrets Manager secret name for GitHub webhook secret"
   type        = string
 }
 
 # ----------------------------------------------------------------------
-# Microservices List & Runtime Ports
+# Microservices List & Ports
 # ----------------------------------------------------------------------
-
 variable "services" {
   description = "List of microservices (used for ECR, ECS, CodeBuild)"
   type        = list(string)
@@ -97,8 +94,9 @@ variable "service_ports" {
   }
 }
 
+# Microservice exposed behind ALB
 variable "main_service" {
-  description = "Primary microservice behind the ALB"
+  description = "Primary microservice that ALB forwards traffic to"
   type        = string
   default     = "auth"
 }
@@ -106,7 +104,6 @@ variable "main_service" {
 # ----------------------------------------------------------------------
 # Networking Variables
 # ----------------------------------------------------------------------
-
 variable "vpc_cidr" {
   description = "VPC CIDR block"
   type        = string
