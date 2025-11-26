@@ -8,19 +8,14 @@ variable "aws_region" {
 }
 
 variable "project_name" {
-  description = "Base prefix for naming resources (keeps infra organized)"
+  description = "Base prefix for naming resources"
   type        = string
   default     = "hcp-ecs-7svc"
 }
 
 # ----------------------------------------------------------------------
-# GitHub Settings (Webhook-based CodePipeline)
+# GitHub Settings (CodePipeline + Webhook)
 # ----------------------------------------------------------------------
-variable "github_branch" {
-  description = "GitHub branch CodePipeline will listen to"
-  type        = string
-  default     = "main"
-}
 
 variable "github_owner" {
   description = "GitHub username or organization name"
@@ -32,14 +27,21 @@ variable "github_repo_name" {
   type        = string
 }
 
-variable "github_oauth_token" {
-  description = "GitHub Personal Access Token (used by CodePipeline)"
+variable "github_branch" {
+  description = "GitHub branch CodePipeline will listen to"
   type        = string
-  sensitive   = true
+  default     = "main"
 }
 
+# GitHub PAT stored directly in Secrets Manager
+variable "github_oauth_token_secret_name" {
+  description = "Name of AWS Secrets Manager secret storing the GitHub OAuth token"
+  type        = string
+}
+
+# Webhook secret used for validating GitHub → AWS CodePipeline webhook
 variable "github_webhook_secret" {
-  description = "Secret token used for GitHub Webhook HMAC validation"
+  description = "Secret token used for GitHub webhook HMAC validation"
   type        = string
   sensitive   = true
 }
@@ -47,8 +49,9 @@ variable "github_webhook_secret" {
 # ----------------------------------------------------------------------
 # Microservices List & Runtime Ports
 # ----------------------------------------------------------------------
+
 variable "services" {
-  description = "List of microservices used for ECR, ECS & CodeBuild"
+  description = "List of microservices (used for ECR, ECS, CodeBuild)"
   type        = list(string)
 
   default = [
@@ -63,7 +66,7 @@ variable "services" {
 }
 
 variable "service_ports" {
-  description = "Port mapping for each microservice container"
+  description = "Port mapping for each microservice"
   type        = map(number)
 
   default = {
@@ -78,7 +81,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary microservice deployed behind ALB"
+  description = "Primary microservice behind the ALB"
   type        = string
   default     = "auth"
 }
@@ -86,6 +89,7 @@ variable "main_service" {
 # ----------------------------------------------------------------------
 # Networking Variables
 # ----------------------------------------------------------------------
+
 variable "vpc_cidr" {
   description = "VPC CIDR block"
   type        = string
