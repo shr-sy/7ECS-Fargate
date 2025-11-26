@@ -8,30 +8,31 @@ variable "aws_region" {
 }
 
 variable "project_name" {
-  description = "Base name for all resources"
+  description = "Base name prefix for all AWS resources"
   type        = string
   default     = "hcp-ecs-7svc"
 }
 
 # ---------------------------
-# GitHub Settings
+# GitHub Settings (for CodeStar)
 # ---------------------------
 variable "github_repo" {
-  description = "GitHub repository in owner/repo format"
+  description = "GitHub repository in owner/repo format (e.g., shr-sy/7ECS-Fargate)"
   type        = string
   default     = "shr-sy/7ECS-Fargate"
 }
 
-variable "github_oauth_token" {
-  description = "GitHub token (store securely in Terraform Cloud variables)"
+variable "github_branch" {
+  description = "GitHub branch used for CI/CD CodePipeline"
   type        = string
+  default     = "main"
 }
 
 # ---------------------------
-# Microservices
+# Microservices Settings
 # ---------------------------
 variable "services" {
-  description = "List of microservices"
+  description = "List of microservices to build & deploy"
   type        = list(string)
 
   default = [
@@ -50,19 +51,18 @@ variable "service_ports" {
   type        = map(number)
 
   default = {
-    auth           = 3001
-    users          = 3002
-    orders         = 3003
-    products       = 3004
-    payments       = 3005
-    notifications  = 3006
-    reports        = 3007
+    auth          = 3001
+    users         = 3002
+    orders        = 3003
+    products      = 3004
+    payments      = 3005
+    notifications = 3006
+    reports       = 3007
   }
 }
 
-# 🚨 IMPORTANT: Tell ECS which service is the MAIN service to run
 variable "main_service" {
-  description = "Which service ECS should run as the main container/service"
+  description = "Service that ECS will run as the main entrypoint"
   type        = string
   default     = "auth"
 }
