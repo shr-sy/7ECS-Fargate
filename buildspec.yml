@@ -1,39 +1,71 @@
 version: 0.2
+
 env:
   variables:
-    AWS_DEFAULT_REGION: "ap-south-1"
+    AWS_DEFAULT_REGION: "us-east-1"   # ← SAME AS TERRAFORM REGION
+    MICRO_DIR: "microservices"
+
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
+      - echo "==== PRE-BUILD START ===="
+      - echo "Logging into ECR..."
       - aws --version
-      - echo "Logging into ECR"
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
+        docker login --username AWS --password-stdin \
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo "==== PRE-BUILD COMPLETE ===="
+
   build:
     commands:
-      - echo Building and pushing images for all microservices...
+      - echo "==== BUILD START ===="
+      - echo "Building + Pushing ALL microservices..."
       - |
-        for svc in microservices/*; do
+        for svc in $MICRO_DIR/*; do
           NAME=$(basename $svc)
-          echo "Building $NAME"
+
+          echo "---- Building service: $NAME ----"
+
           docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
-          docker tag $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+
+          docker tag \
+            $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
+            $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
+
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
+      - echo "==== BUILD COMPLETE ===="
+
   post_build:
     commands:
-      - echo Generating imagedefinitions.json for ECS (services array)
+      - echo "==== POST-BUILD START ===="
+      - echo "Generating imagedefinitions.json for ECS..."
       - |
         python3 - <<'PY'
 import json, os
-services = [d for d in os.listdir('microservices') if os.path.isdir(os.path.join('microservices', d))]
-arr = []
+
+micro_dir = "microservices"
+services = [s for s in os.listdir(micro_dir) if os.path.isdir(os.path.join(micro_dir, s))]
+account = os.environ["AWS_ACCOUNT_ID"]
+region = os.environ["AWS_DEFAULT_REGION"]
+
+output = []
 for s in services:
-    arr.append({"name": s, "imageUri": f"{os.environ['AWS_ACCOUNT_ID']}.dkr.ecr.{os.environ['AWS_DEFAULT_REGION']}.amazonaws.com/{s}:latest"})
-print(json.dumps(arr))
-open('imagedefinitions.json','w').write(json.dumps(arr))
+    output.append({
+        "name": s,
+        "imageUri": f"{account}.dkr.ecr.{region}.amazonaws.com/{s}:latest"
+    })
+
+with open("imagedefinitions.json", "w") as f:
+    f.write(json.dumps(output))
+
+print("Generated imagedefinitions.json:")
+print(output)
 PY
+
+      - echo "==== POST-BUILD COMPLETE ===="
+
 artifacts:
   files:
     - imagedefinitions.json
