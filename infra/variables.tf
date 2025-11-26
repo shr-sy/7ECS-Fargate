@@ -14,18 +14,41 @@ variable "project_name" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub Settings (for AWS CodeStar Connection + CodePipeline)
+# GitHub Settings (Webhook-based CodePipeline)
 # ----------------------------------------------------------------------
-variable "github_repo" {
-  description = "GitHub repository in owner/repo format"
-  type        = string
-  default     = "shr-sy/7ECS-Fargate"
-}
+# ❌ Removed: github_repo (owner/repo) — Only needed for CodeStar
 
 variable "github_branch" {
   description = "GitHub branch CodePipeline will listen to"
   type        = string
   default     = "main"
+}
+
+variable "github_owner" {
+  description = "GitHub username or organization name"
+  type        = string
+}
+
+variable "github_repo_name" {
+  description = "Repository name only (without owner)"
+  type        = string
+}
+
+variable "github_oauth_token" {
+  description = "GitHub Personal Access Token (used by CodePipeline)"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_webhook_secret" {
+  description = "Secret token used for GitHub Webhook validation"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_oauth_token_secret_name" {
+  description = "Name of Secrets Manager secret storing GitHub OAuth token"
+  type        = string
 }
 
 # ----------------------------------------------------------------------
@@ -61,7 +84,6 @@ variable "service_ports" {
   }
 }
 
-# ECS needs to know which service is deployed behind ALB
 variable "main_service" {
   description = "Primary microservice deployed behind ALB"
   type        = string
@@ -93,35 +115,4 @@ variable "private_subnets" {
     "10.0.11.0/24",
     "10.0.12.0/24"
   ]
-}
-
-# ----------------------------------------------------------------------
-# GitHub Webhook + Authentication (For Webhook-based CodePipeline)
-# ----------------------------------------------------------------------
-
-variable "github_owner" {
-  description = "GitHub username or organization name"
-  type        = string
-}
-
-variable "github_repo_name" {
-  description = "Repository name only (without owner)"
-  type        = string
-}
-
-variable "github_oauth_token" {
-  description = "GitHub Personal Access Token (used by CodePipeline)"
-  type        = string
-  sensitive   = true
-}
-
-variable "github_webhook_secret" {
-  description = "Secret token used for GitHub Webhook validation"
-  type        = string
-  sensitive   = true
-}
-
-variable "github_oauth_token_secret_name" {
-  description = "Name of Secrets Manager secret storing GitHub OAuth token"
-  type        = string
 }
