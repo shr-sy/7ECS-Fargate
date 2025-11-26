@@ -115,7 +115,7 @@ resource "aws_security_group" "alb_sg" {
 resource "aws_security_group" "ecs_sg" {
   name        = "${var.project_name}-ecs-sg"
   vpc_id      = aws_vpc.this.id
-  description = "Allow ALB → ECS traffic"
+  description = "Allow ALB to ECS traffic"
 
   ingress {
     description    = "ALB to ECS"
