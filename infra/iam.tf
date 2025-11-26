@@ -21,33 +21,38 @@ resource "aws_iam_role" "codebuild" {
 data "aws_iam_policy_document" "codebuild_policy" {
   statement {
     actions = [
+      # ECR push/pull
       "ecr:GetAuthorizationToken",
+      "ecr:BatchCheckLayerAvailability",
       "ecr:InitiateLayerUpload",
       "ecr:UploadLayerPart",
       "ecr:CompleteLayerUpload",
       "ecr:PutImage",
       "ecr:BatchGetImage",
-      "ecr:BatchCheckLayerAvailability",
 
       # CloudWatch Logs
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
 
-      # S3 (artifacts)
-      "s3:*",
+      # S3 Artifacts
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:ListBucket",
 
-      # ECS deploy
+      # ECS
       "ecs:RegisterTaskDefinition",
-      "ecs:UpdateService",
       "ecs:DescribeServices",
+      "ecs:UpdateService",
 
       # Pass roles
       "iam:PassRole",
 
-      # Parameter Store & Secrets Manager
-      "ssm:GetParameters",
-      "secretsmanager:GetSecretValue"
+      # Secrets Manager
+      "secretsmanager:GetSecretValue",
+
+      # SSM
+      "ssm:GetParameters"
     ]
     resources = ["*"]
   }
@@ -60,7 +65,7 @@ resource "aws_iam_role_policy" "codebuild_policy_attach" {
 }
 
 #########################################
-# ECS Task Execution Role (one canonical role)
+# ECS Task Execution Role
 #########################################
 
 data "aws_iam_policy_document" "ecs_task_exec_assume" {
@@ -85,7 +90,7 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_policy_attach" {
 }
 
 #########################################
-# CodePipeline Role & Policy (GitHub Webhook — No CodeStar)
+# CodePipeline Role (GitHub Webhook Enabled)
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_assume" {
@@ -108,9 +113,13 @@ resource "aws_iam_role" "codepipeline_role" {
   }
 }
 
+#########################################
+# CodePipeline Policy
+#########################################
+
 data "aws_iam_policy_document" "codepipeline_policy_doc" {
 
-  # Basic pipeline access
+  # Pipeline management
   statement {
     actions = [
       "codepipeline:GetPipeline",
@@ -121,7 +130,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # Allow CodePipeline to pull OAuth token from Secrets Manager
+  # GitHub OAuth Token (Secrets Manager)
   statement {
     actions = [
       "secretsmanager:GetSecretValue",
@@ -130,8 +139,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # ⭐ ADDED FOR GITHUB WEBHOOK
-  # Register & validate GitHub webhook with CodePipeline
+  # GitHub Webhook actions
   statement {
     actions = [
       "codepipeline:PutWebhook",
@@ -142,34 +150,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # ⭐ ADDED — allow KMS decrypt for artifact bucket (required)
-  statement {
-    actions = [
-      "kms:Decrypt",
-      "kms:DescribeKey"
-    ]
-    resources = ["*"]
-  }
-
-  # ⭐ ADDED — ECS IAM role lookup
-  statement {
-    actions = [
-      "iam:GetRole"
-    ]
-    resources = ["*"]
-  }
-
-  # Allow triggering CodeBuild
-  statement {
-    actions = [
-      "codebuild:BatchGetBuilds",
-      "codebuild:StartBuild",
-      "codebuild:BatchGetProjects"
-    ]
-    resources = ["*"]
-  }
-
-  # Allow ECS deployment
+  # ECS deploy
   statement {
     actions = [
       "ecs:DescribeClusters",
@@ -180,7 +161,17 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # S3 access for pipeline artifacts
+  # CodeBuild trigger
+  statement {
+    actions = [
+      "codebuild:BatchGetProjects",
+      "codebuild:BatchGetBuilds",
+      "codebuild:StartBuild"
+    ]
+    resources = ["*"]
+  }
+
+  # S3 artifact bucket
   statement {
     actions = [
       "s3:GetObject",
@@ -190,7 +181,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # Pass IAM roles to ECS tasks
+  # Pass IAM roles to CodeBuild/ECS
   statement {
     actions = [
       "iam:PassRole"
