@@ -33,18 +33,13 @@ variable "github_branch" {
   default     = "main"
 }
 
-variable "github_oauth_token" {
-  type      = string
-  sensitive = true
-}
-
-# GitHub PAT stored directly in Secrets Manager
+# GitHub PAT stored in AWS Secrets Manager
 variable "github_oauth_token_secret_name" {
   description = "Name of AWS Secrets Manager secret storing the GitHub OAuth token"
   type        = string
 }
 
-# Webhook secret used for validating GitHub → AWS CodePipeline webhook
+# Webhook secret for GitHub → AWS HMAC validation
 variable "github_webhook_secret" {
   description = "Secret token used for GitHub webhook HMAC validation"
   type        = string
