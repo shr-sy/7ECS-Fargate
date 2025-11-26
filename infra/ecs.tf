@@ -25,7 +25,6 @@ resource "aws_ecs_task_definition" "task" {
   cpu                      = 256
   memory                   = 512
 
-  # IAM Roles
   execution_role_arn = aws_iam_role.ecs_task_exec.arn
   task_role_arn      = aws_iam_role.ecs_task_exec.arn
 
@@ -55,7 +54,7 @@ resource "aws_ecs_task_definition" "task" {
 }
 
 #########################################
-# ECS Services - One per microservice
+# ECS Services
 #########################################
 resource "aws_ecs_service" "svc" {
   for_each            = toset(var.services)
@@ -70,7 +69,7 @@ resource "aws_ecs_service" "svc" {
   deployment_maximum_percent         = 200
 
   network_configuration {
-    subnets          = var.private_subnets     # 🔥 FIXED: Correct variable name
+    subnets          = var.private_subnet_ids   # << FIXED — correct subnet IDs
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
@@ -82,38 +81,8 @@ resource "aws_ecs_service" "svc" {
   }
 
   depends_on = [
-    aws_lb_listener.http,
-    aws_lb_target_group.tg
+    aws_lb_listener.http
   ]
-}
-
-#########################################
-# ECS Task Security Group
-#########################################
-resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.project_name}-ecs-tasks-sg"
-  description = "Allow ALB to reach ECS tasks"
-  vpc_id      = aws_vpc.this.id
-
-  # ALB → ECS Inbound rules dynamically per-port
-  dynamic "ingress" {
-    for_each = var.service_ports
-    content {
-      description     = "Allow ALB traffic to ${ingress.key}"
-      from_port       = ingress.value
-      to_port         = ingress.value
-      protocol        = "tcp"
-      security_groups = [aws_security_group.alb_sg.id]
-    }
-  }
-
-  # Outbound: Allow tasks to reach internet (pull images)
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 #########################################
@@ -125,7 +94,7 @@ output "ecs_services" {
     k => {
       id   = svc.id
       name = svc.name
-      arn  = svc.id
+      arn  = svc.id   # svc.id == ARN for ECS services
     }
   }
 }
