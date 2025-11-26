@@ -82,7 +82,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################
-  # DEPLOY STAGE — ECS
+  # DEPLOY STAGE — ECS (UPDATED)
   ############################################
   stage {
     name = "Deploy"
@@ -97,7 +97,10 @@ resource "aws_codepipeline" "pipeline" {
 
       configuration = {
         ClusterName = aws_ecs_cluster.main.name
-        ServiceName = aws_ecs_service.main.name
+        
+        # IMPORTANT — FIXED
+        ServiceName = aws_ecs_service.svc[var.main_service].name
+        
         FileName    = "imagedefinitions.json"
       }
     }
