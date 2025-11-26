@@ -25,6 +25,42 @@ data "aws_secretsmanager_secret_version" "github_token" {
 }
 
 ############################################
+# CODEPIPELINE IAM ROLE
+############################################
+resource "aws_iam_role" "codepipeline_role" {
+  name = "${var.project_name}-cp-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect    = "Allow",
+      Principal = { Service = "codepipeline.amazonaws.com" },
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "codepipeline_policy" {
+  role = aws_iam_role.codepipeline_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:*",
+          "codebuild:*",
+          "ecs:*",
+          "iam:PassRole"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+############################################
 # CODEPIPELINE RESOURCE
 ############################################
 resource "aws_codepipeline" "pipeline" {
@@ -33,7 +69,7 @@ resource "aws_codepipeline" "pipeline" {
 
   artifact_store {
     type     = "S3"
-    location = aws_s3_bucket.cp_bucket.id
+    location = aws_s3_bucket.cp_bucket.bucket
   }
 
   ############################################
@@ -105,7 +141,7 @@ resource "aws_codepipeline" "pipeline" {
 }
 
 ############################################
-# CODEPIPELINE WEBHOOK — GITHUB TRIGGER
+# CODEPIPELINE WEBHOOK (GitHub Trigger)
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
