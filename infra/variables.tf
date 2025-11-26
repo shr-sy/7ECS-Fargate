@@ -46,11 +46,23 @@ variable "github_oauth_token_secret_name" {
   type        = string
 }
 
+# Secret VALUE inside the secret
+variable "github_oauth_token" {
+  description = "GitHub Personal Access Token (PAT) stored in Secrets Manager"
+  type        = string
+  sensitive   = true
+}
+
 # ----------------------------------------------------------------------
-# GitHub Webhook Secret (HMAC)
+# GitHub Webhook Secret (HMAC) — Name + Value
 # ----------------------------------------------------------------------
+variable "github_webhook_secret_name" {
+  description = "Name of the Secrets Manager secret storing GitHub webhook secret"
+  type        = string
+}
+
 variable "github_webhook_secret" {
-  description = "HMAC secret token for GitHub webhook authentication"
+  description = "HMAC secret used for GitHub webhook authentication"
   type        = string
   sensitive   = true
 }
