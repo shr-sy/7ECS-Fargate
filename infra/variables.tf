@@ -121,3 +121,7 @@ variable "github_webhook_secret" {
   sensitive   = true
 }
 
+variable "github_oauth_token_secret_name" {
+  description = "Name of Secrets Manager secret storing GitHub OAuth token"
+  type        = string
+}
