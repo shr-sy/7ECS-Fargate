@@ -1,22 +1,21 @@
-# ----------------------------
+#########################################
 # ECS Cluster
-# ----------------------------
+#########################################
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 }
 
-# ----------------------------
-# CloudWatch Log Group
-# ----------------------------
+#########################################
+# CloudWatch Logs
+#########################################
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = 7
 }
 
-# ----------------------------
-# ECS Task Definitions
-# One per microservice
-# ----------------------------
+#########################################
+# ECS Task Definitions (One per microservice)
+#########################################
 resource "aws_ecs_task_definition" "task" {
   for_each = toset(var.services)
 
@@ -26,6 +25,7 @@ resource "aws_ecs_task_definition" "task" {
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_task_exec.arn
+  task_role_arn            = aws_iam_role.ecs_task_exec.arn
 
   container_definitions = jsonencode([
     {
@@ -53,9 +53,9 @@ resource "aws_ecs_task_definition" "task" {
   ])
 }
 
-# ----------------------------
-# ECS Services (One for each microservice)
-# ----------------------------
+#########################################
+# ECS Services (One per microservice)
+#########################################
 resource "aws_ecs_service" "svc" {
   for_each = toset(var.services)
 
@@ -81,4 +81,14 @@ resource "aws_ecs_service" "svc" {
     aws_lb_listener.http,
     aws_lb_listener_rule.rules
   ]
+}
+
+#########################################
+# Output ECS Service ARNs (optional)
+#########################################
+output "ecs_services" {
+  value = {
+    for svc in aws_ecs_service.svc :
+    svc.key => svc.value.arn
+  }
 }
