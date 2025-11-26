@@ -85,7 +85,7 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_policy_attach" {
 }
 
 #########################################
-# CodePipeline Role & Policy (with CodeStar usage)
+# CodePipeline Role & Policy (GitHub Webhook version — No CodeStar)
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_assume" {
@@ -110,16 +110,25 @@ resource "aws_iam_role" "codepipeline_role" {
 
 data "aws_iam_policy_document" "codepipeline_policy_doc" {
 
-  # Allow CodePipeline to use the specified CodeStar connection
+  # REMOVE CodeStar permissions (Not needed)
+  # ADD GitHub source integration permissions instead
   statement {
     actions = [
-      "codestar-connections:UseConnection",
-      "codestar-connections:GetConnection",
-      "codestar-connections:ListConnections"
+      "codepipeline:GetPipeline",
+      "codepipeline:GetPipelineState",
+      "codepipeline:GetPipelineExecution",
+      "codepipeline:StartPipelineExecution"
     ]
-    resources = [
-      aws_codestarconnections_connection.github.arn
+    resources = ["*"]
+  }
+
+  # Allow CodePipeline to pull from GitHub using OAuth token
+  statement {
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "kms:Decrypt"
     ]
+    resources = ["*"]
   }
 
   # Allow triggering CodeBuild
@@ -137,7 +146,8 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     actions = [
       "ecs:DescribeClusters",
       "ecs:DescribeServices",
-      "ecs:UpdateService"
+      "ecs:UpdateService",
+      "ecs:RegisterTaskDefinition"
     ]
     resources = ["*"]
   }
@@ -152,7 +162,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # Pass IAM roles to ECS (required to call ecs:UpdateService with task role)
+  # Pass IAM roles to ECS tasks
   statement {
     actions = [
       "iam:PassRole"
