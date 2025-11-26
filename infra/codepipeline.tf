@@ -15,6 +15,13 @@ resource "aws_s3_bucket_acl" "cp_bucket_acl" {
 }
 
 ############################################
+# Get GitHub OAuth Token from Secrets Manager
+############################################
+data "aws_secretsmanager_secret_version" "github_token" {
+  secret_id = var.github_oauth_token_secret_name
+}
+
+############################################
 # AWS CodePipeline
 ############################################
 resource "aws_codepipeline" "pipeline" {
@@ -41,11 +48,11 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        Owner                = var.github_owner          # NEW
-        Repo                 = var.github_repo_name      # NEW
-        Branch               = var.github_branch         # existing
-        OAuthToken           = var.github_oauth_token    # NEW
-        PollForSourceChanges = false                     # REQUIRED for webhook
+        Owner                = split("/", var.github_repo)[0]     # FIXED
+        Repo                 = split("/", var.github_repo)[1]     # FIXED
+        Branch               = var.github_branch
+        OAuthToken           = data.aws_secretsmanager_secret_version.github_token.secret_string
+        PollForSourceChanges = false
       }
     }
   }
@@ -101,7 +108,7 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
   authentication  = "GITHUB_HMAC"
   target_action   = "GitHubSource"
-  target_pipeline = aws_codepipeline.pipeline.name
+  target_pipeline = aws_codepipeline.pipeline.arn   # FIXED
 
   authentication_configuration {
     secret_token = var.github_webhook_secret
@@ -112,4 +119,3 @@ resource "aws_codepipeline_webhook" "github_webhook" {
     match_equals = "refs/heads/${var.github_branch}"
   }
 }
-
