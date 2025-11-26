@@ -1,86 +1,66 @@
 #########################################
 # VPC
 #########################################
-
 resource "aws_vpc" "this" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = {
-    Name = "myproject-vpc"
+    Name = "${var.project_name}-vpc"
   }
 }
 
 #########################################
 # Internet Gateway
 #########################################
-
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.this.id
 
   tags = {
-    Name = "myproject-igw"
+    Name = "${var.project_name}-igw"
   }
 }
 
 #########################################
-# Subnet CIDRs
+# Availability Zones (auto-discover)
 #########################################
-
-locals {
-  public_subnets = {
-    a = "10.0.1.0/24"
-    b = "10.0.2.0/24"
-  }
-
-  private_subnets = {
-    a = "10.0.11.0/24"
-    b = "10.0.12.0/24"
-  }
-
-  azs = {
-    a = "us-east-1a"
-    b = "us-east-1b"
-  }
-}
+data "aws_availability_zones" "available" {}
 
 #########################################
 # Public Subnets
 #########################################
-
 resource "aws_subnet" "public" {
-  for_each = local.public_subnets
+  for_each = toset(var.public_subnets)
 
   vpc_id                  = aws_vpc.this.id
   cidr_block              = each.value
-  availability_zone       = local.azs[each.key]
+  availability_zone       = data.aws_availability_zones.available.names[index(var.public_subnets, each.value)]
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "myproject-public-${each.key}"
+    Name = "${var.project_name}-public-${index(var.public_subnets, each.value)}"
   }
 }
 
 #########################################
 # Private Subnets
 #########################################
-
 resource "aws_subnet" "private" {
-  for_each = local.private_subnets
+  for_each = toset(var.private_subnets)
 
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = each.value
-  availability_zone       = local.azs[each.key]
-  map_public_ip_on_launch = false
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = each.value
+  availability_zone = data.aws_availability_zones.available.names[index(var.private_subnets, each.value)]
 
   tags = {
-    Name = "myproject-private-${each.key}"
+    Name = "${var.project_name}-private-${index(var.private_subnets, each.value)}"
   }
 }
 
 #########################################
-# Public Route Table + Association
+# Public Route Table + Default Route
 #########################################
-
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.this.id
 
@@ -90,7 +70,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name = "myproject-public-rt"
+    Name = "${var.project_name}-public-rt"
   }
 }
 
@@ -104,14 +84,13 @@ resource "aws_route_table_association" "public_assoc" {
 #########################################
 # Security Group – ALB
 #########################################
-
 resource "aws_security_group" "alb_sg" {
-  name        = "myproject-alb-sg"
+  name        = "${var.project_name}-alb-sg"
   vpc_id      = aws_vpc.this.id
   description = "Security group for ALB"
 
   ingress {
-    description = "Allow HTTP traffic"
+    description = "Allow inbound HTTP traffic"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
@@ -126,22 +105,21 @@ resource "aws_security_group" "alb_sg" {
   }
 
   tags = {
-    Name = "myproject-alb-sg"
+    Name = "${var.project_name}-alb-sg"
   }
 }
 
 #########################################
 # Security Group – ECS Tasks
 #########################################
-
 resource "aws_security_group" "ecs_sg" {
-  name        = "myproject-ecs-sg"
+  name        = "${var.project_name}-ecs-sg"
   vpc_id      = aws_vpc.this.id
-  description = "Allow traffic from ALB"
+  description = "Allow ALB → ECS traffic"
 
   ingress {
-    description    = "ALB to ECS traffic"
-    from_port       = 80        # service port to update later
+    description    = "ALB to ECS"
+    from_port       = 80   # ECS default; dynamic per-service later
     to_port         = 80
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
@@ -155,24 +133,23 @@ resource "aws_security_group" "ecs_sg" {
   }
 
   tags = {
-    Name = "myproject-ecs-sg"
+    Name = "${var.project_name}-ecs-sg"
   }
 }
 
 #########################################
 # Outputs
 #########################################
-
 output "vpc_id" {
   value = aws_vpc.this.id
 }
 
 output "public_subnet_ids" {
-  value = [for s in aws_subnet.public : s.id]
+  value = [for subnet in aws_subnet.public : subnet.id]
 }
 
 output "private_subnet_ids" {
-  value = [for s in aws_subnet.private : s.id]
+  value = [for subnet in aws_subnet.private : subnet.id]
 }
 
 output "alb_sg_id" {
