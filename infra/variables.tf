@@ -22,7 +22,6 @@ variable "environment" {
 # ----------------------------------------------------------------------
 # GitHub Settings (CodePipeline + Webhook)
 # ----------------------------------------------------------------------
-
 variable "github_owner" {
   description = "GitHub username or organization name"
   type        = string
@@ -43,22 +42,17 @@ variable "github_branch" {
 # GitHub OAuth Token (PAT) stored in AWS Secrets Manager
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
-  description = "AWS Secrets Manager secret name containing GitHub PAT"
+  description = "Name of AWS Secrets Manager secret containing GitHub PAT"
   type        = string
 }
 
 # ----------------------------------------------------------------------
-# GitHub Webhook Secret (stored in Secrets Manager)
+# GitHub Webhook Secret (HMAC)
 # ----------------------------------------------------------------------
 variable "github_webhook_secret" {
-  description = "HMAC token used by GitHub webhook"
+  description = "HMAC secret token for GitHub webhook authentication"
   type        = string
   sensitive   = true
-}
-
-variable "github_webhook_secret_name" {
-  description = "Secrets Manager secret name for GitHub webhook secret"
-  type        = string
 }
 
 # ----------------------------------------------------------------------
@@ -94,7 +88,7 @@ variable "service_ports" {
   }
 }
 
-# Microservice exposed behind ALB
+# The main service behind ALB
 variable "main_service" {
   description = "Primary microservice that ALB forwards traffic to"
   type        = string
