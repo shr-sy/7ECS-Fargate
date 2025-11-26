@@ -69,10 +69,10 @@ resource "aws_ecs_service" "svc" {
   deployment_maximum_percent         = 200
 
   network_configuration {
-    subnets          = var.private_subnets   # << FIXED — correct subnet IDs
+    subnets          = aws_subnet.private[*].id   # ✅ Correct – subnet IDs
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
-  }
+}
 
   load_balancer {
     target_group_arn = aws_lb_target_group.tg[each.value].arn
