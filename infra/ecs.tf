@@ -67,7 +67,7 @@ resource "aws_ecs_service" "svc" {
 
   network_configuration {
     subnets          = [for s in aws_subnet.private : s.id]
-    security_groups  = [aws_security_group.ecs_sg.id]
+    security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
 
@@ -84,21 +84,24 @@ resource "aws_ecs_service" "svc" {
 }
 
 #########################################
-# Output ECS Service ARNs (optional)
+# Output ECS Service ARNs
 #########################################
 output "ecs_services" {
   value = {
-    for svc in aws_ecs_service.svc :
-    svc.key => svc.value.arn
+    for name, svc in aws_ecs_service.svc :
+    name => svc.arn
   }
 }
 
+#########################################
+# ECS Task Security Group
+#########################################
 resource "aws_security_group" "ecs_tasks" {
   name        = "${var.project_name}-ecs-tasks-sg"
   description = "Security group for ECS Fargate tasks"
   vpc_id      = aws_vpc.this.id
 
-  # Allow ALB to reach ECS tasks on all service ports
+  # Allow ALB to reach ECS services on their respective ports
   dynamic "ingress" {
     for_each = var.service_ports
     content {
@@ -110,7 +113,7 @@ resource "aws_security_group" "ecs_tasks" {
     }
   }
 
-  # Allow tasks to reach the internet (e.g., DB, external APIs)
+  # Allow ECS tasks to reach the Internet (Outbound)
   egress {
     from_port   = 0
     to_port     = 0
