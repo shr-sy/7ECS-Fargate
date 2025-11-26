@@ -13,6 +13,12 @@ variable "project_name" {
   default     = "hcp-ecs-7svc"
 }
 
+variable "environment" {
+  description = "Environment name (dev, qa, prod)"
+  type        = string
+  default     = "dev"
+}
+
 # ----------------------------------------------------------------------
 # GitHub Settings (CodePipeline + Webhook)
 # ----------------------------------------------------------------------
@@ -33,27 +39,27 @@ variable "github_branch" {
   default     = "main"
 }
 
-# GitHub PAT that will be stored inside AWS Secrets Manager
+# PAT passed from HCP Terraform → stored in AWS Secrets Manager
 variable "github_oauth_token" {
-  description = "GitHub OAuth token (PAT) passed via HCP Terraform workspace variable"
+  description = "GitHub OAuth token (PAT)"
   type        = string
   sensitive   = true
 }
 
 variable "github_oauth_token_secret_name" {
-  description = "Name of AWS Secrets Manager secret storing the GitHub OAuth token"
+  description = "AWS Secrets Manager name where GitHub PAT will be stored"
   type        = string
 }
 
-# Webhook secret (HMAC token)
+# Webhook HMAC secret (also stored in AWS Secrets Manager)
 variable "github_webhook_secret" {
-  description = "Secret token used for GitHub webhook HMAC validation"
+  description = "HMAC token for GitHub → CodePipeline webhook"
   type        = string
   sensitive   = true
 }
 
 variable "github_webhook_secret_name" {
-  description = "Name of the AWS Secrets Manager secret storing GitHub webhook secret"
+  description = "AWS Secrets Manager name for storing GitHub webhook secret"
   type        = string
 }
 
