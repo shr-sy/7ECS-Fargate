@@ -1,3 +1,14 @@
+##############################
+# CodeStar GitHub Connection
+##############################
+resource "aws_codestarconnections_connection" "github" {
+  name          = "${var.project_name}-github-connection"
+  provider_type = "GitHub"
+}
+
+##############################
+# Pipeline S3 Bucket
+##############################
 resource "random_id" "bucket_id" {
   byte_length = 4
 }
@@ -11,15 +22,24 @@ resource "aws_s3_bucket_acl" "cp_bucket_acl" {
   acl    = "private"
 }
 
+##############################
+# AWS CodePipeline
+##############################
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
+  ################################
+  # Artifact Store
+  ################################
   artifact_store {
     type     = "S3"
-    location = aws_s3_bucket.cp_bucket.id
+    location = aws_s3_bucket.cp_bucket.bucket
   }
 
+  ################################
+  # Source Stage: GitHub → CodePipeline
+  ################################
   stage {
     name = "Source"
 
@@ -32,13 +52,16 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn     = aws_codestarconnections_connection.github.arn
-        FullRepositoryId  = var.github_repo
-        BranchName        = "main"
+        ConnectionArn    = aws_codestarconnections_connection.github.arn
+        FullRepositoryId = var.github_repo          # e.g. "shruti/myrepo"
+        BranchName       = var.github_branch        # default "main"
       }
     }
   }
 
+  ################################
+  # Build Stage
+  ################################
   stage {
     name = "Build"
 
@@ -57,6 +80,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  ################################
+  # Deploy Stage → ECS
+  ################################
   stage {
     name = "Deploy"
 
@@ -70,6 +96,7 @@ resource "aws_codepipeline" "pipeline" {
 
       configuration = {
         ClusterName = aws_ecs_cluster.main.name
+        ServiceName = aws_ecs_service.main.name
         FileName    = "imagedefinitions.json"
       }
     }
