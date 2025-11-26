@@ -61,7 +61,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################
-  # BUILD STAGE — CodeBuild
+  # BUILD STAGE
   ############################################
   stage {
     name = "Build"
@@ -82,7 +82,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################
-  # DEPLOY STAGE — ECS (UPDATED)
+  # DEPLOY STAGE — ECS
   ############################################
   stage {
     name = "Deploy"
@@ -97,11 +97,8 @@ resource "aws_codepipeline" "pipeline" {
 
       configuration = {
         ClusterName = aws_ecs_cluster.main.name
-
-        # Correct reference for microservice-based ECS services
         ServiceName = aws_ecs_service.svc[var.main_service].name
-
-        FileName = "imagedefinitions.json"
+        FileName    = "imagedefinitions.json"
       }
     }
   }
@@ -130,14 +127,8 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   }
 }
 
-############################################
-# REGISTER WEBHOOK WITH GITHUB
-############################################
-resource "aws_codepipeline_webhook_registration" "github_registration" {
-  webhook = aws_codepipeline_webhook.github_webhook.id
+# ❌ IMPORTANT:
+# The resource aws_codepipeline_webhook_registration DOES NOT EXIST.
+# It has been removed from AWS provider.
+# WE MUST NOT INCLUDE IT.
 
-  depends_on = [
-    aws_codepipeline.pipeline,
-    aws_codepipeline_webhook.github_webhook
-  ]
-}
