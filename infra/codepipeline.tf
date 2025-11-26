@@ -51,8 +51,8 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        Owner                = split("/", var.github_repo)[0]
-        Repo                 = split("/", var.github_repo)[1]
+        Owner                = var.github_owner
+        Repo                 = var.github_repo_name
         Branch               = var.github_branch
         OAuthToken           = data.aws_secretsmanager_secret_version.github_token.secret_string
         PollForSourceChanges = false
@@ -97,11 +97,11 @@ resource "aws_codepipeline" "pipeline" {
 
       configuration = {
         ClusterName = aws_ecs_cluster.main.name
-        
-        # IMPORTANT — FIXED
+
+        # Correct reference for microservice-based ECS services
         ServiceName = aws_ecs_service.svc[var.main_service].name
-        
-        FileName    = "imagedefinitions.json"
+
+        FileName = "imagedefinitions.json"
       }
     }
   }
