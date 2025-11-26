@@ -21,7 +21,6 @@ resource "aws_iam_role" "codebuild" {
 data "aws_iam_policy_document" "codebuild_policy" {
   statement {
     actions = [
-      # ECR push/pull
       "ecr:GetAuthorizationToken",
       "ecr:BatchCheckLayerAvailability",
       "ecr:InitiateLayerUpload",
@@ -30,30 +29,23 @@ data "aws_iam_policy_document" "codebuild_policy" {
       "ecr:PutImage",
       "ecr:BatchGetImage",
 
-      # CloudWatch Logs
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
 
-      # S3 Artifacts
       "s3:GetObject",
       "s3:PutObject",
       "s3:ListBucket",
 
-      # ECS
       "ecs:RegisterTaskDefinition",
       "ecs:DescribeServices",
       "ecs:UpdateService",
 
-      # Pass roles
       "iam:PassRole",
-
-      # Secrets Manager
       "secretsmanager:GetSecretValue",
-
-      # SSM
       "ssm:GetParameters"
     ]
+
     resources = ["*"]
   }
 }
@@ -90,7 +82,7 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_policy_attach" {
 }
 
 #########################################
-# CodePipeline Role (GitHub Webhook Enabled)
+# CodePipeline Role
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_assume" {
@@ -114,12 +106,10 @@ resource "aws_iam_role" "codepipeline_role" {
 }
 
 #########################################
-# CodePipeline Policy
+# CodePipeline Inline Policy
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_policy_doc" {
-
-  # Pipeline management
   statement {
     actions = [
       "codepipeline:GetPipeline",
@@ -130,7 +120,6 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # GitHub OAuth Token (Secrets Manager)
   statement {
     actions = [
       "secretsmanager:GetSecretValue",
@@ -139,7 +128,6 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # GitHub Webhook actions
   statement {
     actions = [
       "codepipeline:PutWebhook",
@@ -150,7 +138,6 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # ECS deploy
   statement {
     actions = [
       "ecs:DescribeClusters",
@@ -161,7 +148,6 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # CodeBuild trigger
   statement {
     actions = [
       "codebuild:BatchGetProjects",
@@ -171,7 +157,6 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # S3 artifact bucket
   statement {
     actions = [
       "s3:GetObject",
@@ -181,7 +166,6 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # Pass IAM roles to CodeBuild/ECS
   statement {
     actions = [
       "iam:PassRole"
