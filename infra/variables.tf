@@ -94,3 +94,30 @@ variable "private_subnets" {
     "10.0.12.0/24"
   ]
 }
+
+# ----------------------------------------------------------------------
+# GitHub Webhook + Authentication (For Webhook-based CodePipeline)
+# ----------------------------------------------------------------------
+
+variable "github_owner" {
+  description = "GitHub username or organization name"
+  type        = string
+}
+
+variable "github_repo_name" {
+  description = "Repository name only (without owner)"
+  type        = string
+}
+
+variable "github_oauth_token" {
+  description = "GitHub Personal Access Token (used by CodePipeline)"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_webhook_secret" {
+  description = "Secret token used for GitHub Webhook validation"
+  type        = string
+  sensitive   = true
+}
+
