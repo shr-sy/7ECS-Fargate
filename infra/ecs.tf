@@ -125,7 +125,7 @@ output "ecs_services" {
     k => {
       id   = svc.id
       name = svc.name
-      arn  = svc.arn
+      arn  = svc.id
     }
   }
 }
