@@ -21,7 +21,8 @@ resource "aws_s3_bucket" "cp_bucket" {
 # FETCH GITHUB OAUTH TOKEN FROM SECRETS MANAGER
 ############################################
 data "aws_secretsmanager_secret_version" "github_token" {
-  secret_id = var.github_oauth_token_secret_name
+  secret_id  = aws_secretsmanager_secret.github_oauth_secret.id
+  depends_on = [aws_secretsmanager_secret_version.github_oauth_secret_version]
 }
 
 ############################################
