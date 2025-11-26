@@ -16,8 +16,6 @@ variable "project_name" {
 # ----------------------------------------------------------------------
 # GitHub Settings (Webhook-based CodePipeline)
 # ----------------------------------------------------------------------
-# ❌ Removed: github_repo (owner/repo) — Only needed for CodeStar
-
 variable "github_branch" {
   description = "GitHub branch CodePipeline will listen to"
   type        = string
@@ -41,14 +39,9 @@ variable "github_oauth_token" {
 }
 
 variable "github_webhook_secret" {
-  description = "Secret token used for GitHub Webhook validation"
+  description = "Secret token used for GitHub Webhook HMAC validation"
   type        = string
   sensitive   = true
-}
-
-variable "github_oauth_token_secret_name" {
-  description = "Name of Secrets Manager secret storing GitHub OAuth token"
-  type        = string
 }
 
 # ----------------------------------------------------------------------
