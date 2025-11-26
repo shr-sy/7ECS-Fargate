@@ -40,21 +40,78 @@ resource "aws_iam_role" "codepipeline_role" {
   })
 }
 
+############################################
+# CODEPIPELINE POLICY
+############################################
 resource "aws_iam_role_policy" "codepipeline_policy" {
   role = aws_iam_role.codepipeline_role.id
 
   policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
+
+      # S3
       {
         Effect = "Allow"
         Action = [
-          "s3:*",
-          "codebuild:*",
-          "ecs:*",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket"
+        ]
+        Resource = ["*"]
+      },
+
+      # CodeBuild
+      {
+        Effect = "Allow"
+        Action = [
+          "codebuild:BatchGetBuilds",
+          "codebuild:StartBuild"
+        ]
+        Resource = ["*"]
+      },
+
+      # ECS
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeServices",
+          "ecs:UpdateService",
+          "ecs:RegisterTaskDefinition",
+          "ecs:DescribeClusters"
+        ]
+        Resource = ["*"]
+      },
+
+      # Allow IAM PassRole
+      {
+        Effect = "Allow"
+        Action = [
           "iam:PassRole"
         ]
-        Resource = "*"
+        Resource = ["*"]
+      },
+
+      # GitHub Webhook Permissions
+      {
+        Effect = "Allow"
+        Action = [
+          "codepipeline:PutWebhook",
+          "codepipeline:DeleteWebhook",
+          "codepipeline:RegisterWebhookWithThirdParty",
+          "codepipeline:DeregisterWebhookWithThirdParty"
+        ]
+        Resource = ["*"]
+      },
+
+      # Secrets Manager Decrypt Token
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "kms:Decrypt"
+        ]
+        Resource = ["*"]
       }
     ]
   })
