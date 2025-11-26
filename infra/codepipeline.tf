@@ -1,14 +1,14 @@
-##############################
+############################################
 # CodeStar GitHub Connection
-##############################
+############################################
 resource "aws_codestarconnections_connection" "github" {
   name          = "${var.project_name}-github-connection"
   provider_type = "GitHub"
 }
 
-##############################
+############################################
 # Pipeline S3 Bucket
-##############################
+############################################
 resource "random_id" "bucket_id" {
   byte_length = 4
 }
@@ -22,15 +22,15 @@ resource "aws_s3_bucket_acl" "cp_bucket_acl" {
   acl    = "private"
 }
 
-##############################
+############################################
 # AWS CodePipeline
-##############################
+############################################
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
   ################################
-  # Artifact Store
+  # Artifact Store (S3)
   ################################
   artifact_store {
     type     = "S3"
@@ -38,7 +38,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ################################
-  # Source Stage: GitHub → CodePipeline
+  # SOURCE STAGE — GitHub → CodePipeline
   ################################
   stage {
     name = "Source"
@@ -52,15 +52,16 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn    = aws_codestarconnections_connection.github.arn
-        FullRepositoryId = var.github_repo          # e.g. "shruti/myrepo"
-        BranchName       = var.github_branch        # default "main"
+        ConnectionArn        = aws_codestarconnections_connection.github.arn
+        FullRepositoryId     = var.github_repo
+        BranchName           = var.github_branch
+        OutputArtifactFormat = "CODE_ZIP"
       }
     }
   }
 
   ################################
-  # Build Stage
+  # BUILD STAGE — CodeBuild
   ################################
   stage {
     name = "Build"
@@ -81,7 +82,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ################################
-  # Deploy Stage → ECS
+  # DEPLOY STAGE — ECS Deploy
   ################################
   stage {
     name = "Deploy"
