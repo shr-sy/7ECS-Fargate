@@ -33,21 +33,21 @@ variable "github_repo_name" {
 }
 
 variable "github_branch" {
-  description = "GitHub branch CodePipeline will listen to"
+  description = "GitHub branch CodePipeline will monitor"
   type        = string
   default     = "main"
 }
 
 # ----------------------------------------------------------------------
-# GitHub OAuth Token (PAT)
+# GitHub OAuth Token (PAT) stored in AWS Secrets Manager
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
-  description = "Name of AWS Secrets Manager secret containing GitHub PAT"
+  description = "Name of secret in AWS Secrets Manager storing the PAT"
   type        = string
 }
 
 variable "github_oauth_token" {
-  description = "GitHub Personal Access Token (PAT)"
+  description = "GitHub Personal Access Token (PAT) value"
   type        = string
   sensitive   = true
 }
@@ -56,12 +56,12 @@ variable "github_oauth_token" {
 # GitHub Webhook Secret (HMAC)
 # ----------------------------------------------------------------------
 variable "github_webhook_secret_name" {
-  description = "Name of the Secrets Manager secret storing GitHub webhook secret"
+  description = "Name of the secret that stores GitHub webhook HMAC secret"
   type        = string
 }
 
 variable "github_webhook_secret" {
-  description = "HMAC secret used for GitHub webhook authentication"
+  description = "Webhook secret (HMAC) for GitHub → CodePipeline triggers"
   type        = string
   sensitive   = true
 }
@@ -72,6 +72,7 @@ variable "github_webhook_secret" {
 variable "services" {
   description = "List of microservices (used for ECR, ECS, CodeBuild)"
   type        = list(string)
+
   default = [
     "auth",
     "users",
@@ -86,6 +87,7 @@ variable "services" {
 variable "service_ports" {
   description = "Port mapping for each microservice"
   type        = map(number)
+
   default = {
     auth          = 3001
     users         = 3002
@@ -98,7 +100,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary microservice behind ALB"
+  description = "Primary microservice that ALB forwards traffic to"
   type        = string
   default     = "auth"
 }
@@ -115,6 +117,7 @@ variable "vpc_cidr" {
 variable "public_subnets" {
   description = "Public subnets for ALB"
   type        = list(string)
+
   default = [
     "10.0.1.0/24",
     "10.0.2.0/24"
@@ -122,21 +125,11 @@ variable "public_subnets" {
 }
 
 variable "private_subnets" {
-  description = "Private subnet CIDRs for ECS"
+  description = "Private subnets for ECS Fargate tasks"
   type        = list(string)
+
   default = [
     "10.0.11.0/24",
     "10.0.12.0/24"
   ]
-}
-
-# IDs required by ECS / ALB (Generated from module.vpc)
-variable "private_subnet_ids" {
-  description = "Private subnet IDs used by ECS tasks"
-  type        = list(string)
-}
-
-variable "public_subnet_ids" {
-  description = "Public subnet IDs used for ALB"
-  type        = list(string)
 }
