@@ -24,8 +24,10 @@ resource "aws_ecs_task_definition" "task" {
   requires_compatibilities = ["FARGATE"]
   cpu                      = 256
   memory                   = 512
-  execution_role_arn       = aws_iam_role.ecs_task_exec.arn
-  task_role_arn            = aws_iam_role.ecs_task_exec.arn
+
+  # IAM Roles
+  execution_role_arn = aws_iam_role.ecs_task_exec.arn
+  task_role_arn      = aws_iam_role.ecs_task_exec.arn
 
   container_definitions = jsonencode([
     {
@@ -36,7 +38,6 @@ resource "aws_ecs_task_definition" "task" {
       portMappings = [
         {
           containerPort = var.service_ports[each.value]
-          hostPort      = var.service_ports[each.value]
           protocol      = "tcp"
         }
       ]
@@ -65,8 +66,11 @@ resource "aws_ecs_service" "svc" {
   desired_count   = 1
   launch_type     = "FARGATE"
 
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 200
+
   network_configuration {
-    subnets          = [for s in aws_subnet.private : s.id]
+    subnets          = var.private_subnet_ids
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
@@ -101,19 +105,19 @@ resource "aws_security_group" "ecs_tasks" {
   description = "Security group for ECS Fargate tasks"
   vpc_id      = aws_vpc.this.id
 
-  # Allow ALB to reach ECS services on their respective ports
+  # Allow ALB to reach ECS services
   dynamic "ingress" {
     for_each = var.service_ports
     content {
       description    = "Allow ALB to reach ${ingress.key} service"
-      from_port       = ingress.value
-      to_port         = ingress.value
-      protocol        = "tcp"
+      from_port      = ingress.value
+      to_port        = ingress.value
+      protocol       = "tcp"
       security_groups = [aws_security_group.alb_sg.id]
     }
   }
 
-  # Allow ECS tasks to reach the Internet (Outbound)
+  # Outbound internet access
   egress {
     from_port   = 0
     to_port     = 0
