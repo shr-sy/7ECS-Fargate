@@ -1,38 +1,38 @@
-# ---------------------------
+# ----------------------------------------------------------------------
 # AWS & Project Settings
-# ---------------------------
+# ----------------------------------------------------------------------
 variable "aws_region" {
-  description = "AWS region to deploy resources"
+  description = "AWS region where all resources will be deployed"
   type        = string
   default     = "us-east-1"
 }
 
 variable "project_name" {
-  description = "Base name prefix for all AWS resources"
+  description = "Base prefix for naming resources (keeps infra organized)"
   type        = string
   default     = "hcp-ecs-7svc"
 }
 
-# ---------------------------
-# GitHub Settings (for CodeStar)
-# ---------------------------
+# ----------------------------------------------------------------------
+# GitHub Settings (for AWS CodeStar Connection + CodePipeline)
+# ----------------------------------------------------------------------
 variable "github_repo" {
-  description = "GitHub repository in owner/repo format (e.g., shr-sy/7ECS-Fargate)"
+  description = "GitHub repository in owner/repo format"
   type        = string
   default     = "shr-sy/7ECS-Fargate"
 }
 
 variable "github_branch" {
-  description = "GitHub branch used for CI/CD CodePipeline"
+  description = "GitHub branch CodePipeline will listen to"
   type        = string
   default     = "main"
 }
 
-# ---------------------------
-# Microservices Settings
-# ---------------------------
+# ----------------------------------------------------------------------
+# Microservices List & Runtime Ports
+# ----------------------------------------------------------------------
 variable "services" {
-  description = "List of microservices to build & deploy"
+  description = "List of microservices used for ECR, ECS & CodeBuild"
   type        = list(string)
 
   default = [
@@ -47,7 +47,7 @@ variable "services" {
 }
 
 variable "service_ports" {
-  description = "Port mapping for each microservice"
+  description = "Port mapping for each microservice container"
   type        = map(number)
 
   default = {
@@ -61,17 +61,18 @@ variable "service_ports" {
   }
 }
 
+# ECS needs to know which service is deployed behind ALB
 variable "main_service" {
-  description = "Service that ECS will run as the main entrypoint"
+  description = "Primary microservice deployed behind ALB"
   type        = string
   default     = "auth"
 }
 
-# ---------------------------
-# Networking (VPC/Subnets)
-# ---------------------------
+# ----------------------------------------------------------------------
+# Networking Variables
+# ----------------------------------------------------------------------
 variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+  description = "VPC CIDR block"
   type        = string
   default     = "10.0.0.0/16"
 }
@@ -79,7 +80,6 @@ variable "vpc_cidr" {
 variable "public_subnets" {
   description = "Public subnets for ALB"
   type        = list(string)
-
   default = [
     "10.0.1.0/24",
     "10.0.2.0/24"
@@ -87,9 +87,8 @@ variable "public_subnets" {
 }
 
 variable "private_subnets" {
-  description = "Private subnets for ECS Fargate tasks"
+  description = "Private subnets for ECS tasks"
   type        = list(string)
-
   default = [
     "10.0.11.0/24",
     "10.0.12.0/24"
