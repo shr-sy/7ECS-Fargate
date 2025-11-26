@@ -1,10 +1,13 @@
 ############################################
-# Pipeline S3 Bucket
+# RANDOM ID FOR ARTIFACT BUCKET
 ############################################
 resource "random_id" "bucket_id" {
   byte_length = 4
 }
 
+############################################
+# PIPELINE S3 BUCKET
+############################################
 resource "aws_s3_bucket" "cp_bucket" {
   bucket = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
 }
@@ -15,14 +18,14 @@ resource "aws_s3_bucket_acl" "cp_bucket_acl" {
 }
 
 ############################################
-# Get GitHub OAuth Token from Secrets Manager
+# FETCH GITHUB OAUTH TOKEN FROM SECRETS MANAGER
 ############################################
 data "aws_secretsmanager_secret_version" "github_token" {
   secret_id = var.github_oauth_token_secret_name
 }
 
 ############################################
-# AWS CodePipeline
+# CODEPIPELINE RESOURCE
 ############################################
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
@@ -48,11 +51,11 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        Owner                  = split("/", var.github_repo)[0]
-        Repo                   = split("/", var.github_repo)[1]
-        Branch                 = var.github_branch
-        OAuthToken             = data.aws_secretsmanager_secret_version.github_token.secret_string
-        PollForSourceChanges   = false
+        Owner                = split("/", var.github_repo)[0]
+        Repo                 = split("/", var.github_repo)[1]
+        Branch               = var.github_branch
+        OAuthToken           = data.aws_secretsmanager_secret_version.github_token.secret_string
+        PollForSourceChanges = false
       }
     }
   }
@@ -79,7 +82,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################
-  # DEPLOY STAGE — ECS Fargate
+  # DEPLOY STAGE — ECS
   ############################################
   stage {
     name = "Deploy"
@@ -106,16 +109,14 @@ resource "aws_codepipeline" "pipeline" {
 }
 
 ############################################
-# GitHub Webhook — Triggers Pipeline on Push
+# CODEPIPELINE WEBHOOK — GITHUB TRIGGER
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
-  target_pipeline = aws_codepipeline.pipeline.name   # FIXED
+  target_pipeline = aws_codepipeline.pipeline.name
   target_action   = "GitHubSource"
+  authentication  = "GITHUB_HMAC"
 
-  authentication = "GITHUB_HMAC"
-
-  ### Added role binding (required by AWS)
   role_arn = aws_iam_role.codepipeline_role.arn
 
   authentication_configuration {
@@ -129,7 +130,7 @@ resource "aws_codepipeline_webhook" "github_webhook" {
 }
 
 ############################################
-# Register Webhook with GitHub
+# REGISTER WEBHOOK WITH GITHUB
 ############################################
 resource "aws_codepipeline_webhook_registration" "github_registration" {
   webhook = aws_codepipeline_webhook.github_webhook.id
