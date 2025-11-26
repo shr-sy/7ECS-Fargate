@@ -25,7 +25,7 @@ resource "aws_ecs_task_definition" "task" {
   cpu                      = 256
   memory                   = 512
 
-  # IAM Roles
+  # IAM roles
   execution_role_arn = aws_iam_role.ecs_task_exec.arn
   task_role_arn      = aws_iam_role.ecs_task_exec.arn
 
@@ -70,7 +70,7 @@ resource "aws_ecs_service" "svc" {
   deployment_maximum_percent         = 200
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    subnets          = var.private_subnets       # ✅ FIXED
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
@@ -82,8 +82,7 @@ resource "aws_ecs_service" "svc" {
   }
 
   depends_on = [
-    aws_lb_listener.http,
-    aws_lb_listener_rule.rules
+    aws_lb_listener.http
   ]
 }
 
@@ -105,7 +104,7 @@ resource "aws_security_group" "ecs_tasks" {
   description = "Security group for ECS Fargate tasks"
   vpc_id      = aws_vpc.this.id
 
-  # Allow ALB to reach ECS services
+  # Allow ALB to reach ECS services dynamically
   dynamic "ingress" {
     for_each = var.service_ports
     content {
@@ -117,7 +116,7 @@ resource "aws_security_group" "ecs_tasks" {
     }
   }
 
-  # Outbound internet access
+  # Outbound — allow tasks to pull images, call APIs
   egress {
     from_port   = 0
     to_port     = 0
