@@ -33,17 +33,28 @@ variable "github_branch" {
   default     = "main"
 }
 
-# GitHub PAT stored in AWS Secrets Manager
+# GitHub PAT that will be stored inside AWS Secrets Manager
+variable "github_oauth_token" {
+  description = "GitHub OAuth token (PAT) passed via HCP Terraform workspace variable"
+  type        = string
+  sensitive   = true
+}
+
 variable "github_oauth_token_secret_name" {
   description = "Name of AWS Secrets Manager secret storing the GitHub OAuth token"
   type        = string
 }
 
-# Webhook secret for GitHub → AWS HMAC validation
+# Webhook secret (HMAC token)
 variable "github_webhook_secret" {
   description = "Secret token used for GitHub webhook HMAC validation"
   type        = string
   sensitive   = true
+}
+
+variable "github_webhook_secret_name" {
+  description = "Name of the AWS Secrets Manager secret storing GitHub webhook secret"
+  type        = string
 }
 
 # ----------------------------------------------------------------------
