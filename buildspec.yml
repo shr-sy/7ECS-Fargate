@@ -2,45 +2,57 @@ version: 0.2
 
 env:
   variables:
-    AWS_DEFAULT_REGION: "us-east-1"   # ← SAME AS TERRAFORM REGION
+    AWS_DEFAULT_REGION: "us-east-1"
     MICRO_DIR: "microservices"
 
 phases:
+
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
-      - echo "Logging into ECR..."
+      - echo "Installing AWS CLI version:"
       - aws --version
+
+      - echo "Logging into Amazon ECR..."
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
-        docker login --username AWS --password-stdin \
-        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+          docker login --username AWS --password-stdin \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+
       - echo "==== PRE-BUILD COMPLETE ===="
+
 
   build:
     commands:
       - echo "==== BUILD START ===="
-      - echo "Building + Pushing ALL microservices..."
+      - echo "Building + pushing all microservices inside '$MICRO_DIR' folder..."
+
       - |
         for svc in $MICRO_DIR/*; do
           NAME=$(basename $svc)
 
           echo "---- Building service: $NAME ----"
 
+          # Build image
           docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
 
+          # Tag image with commit SHA
           docker tag \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
+          # Push both latest and commit-tagged images
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
+
       - echo "==== BUILD COMPLETE ===="
+
 
   post_build:
     commands:
       - echo "==== POST-BUILD START ===="
-      - echo "Generating imagedefinitions.json for ECS..."
+      - echo "Creating imagedefinitions.json for ECS CodeDeploy..."
+
       - |
         python3 - <<'PY'
 import json, os
@@ -58,13 +70,14 @@ for s in services:
     })
 
 with open("imagedefinitions.json", "w") as f:
-    f.write(json.dumps(output))
+    f.write(json.dumps(output, indent=2))
 
 print("Generated imagedefinitions.json:")
-print(output)
+print(json.dumps(output, indent=2))
 PY
 
       - echo "==== POST-BUILD COMPLETE ===="
+
 
 artifacts:
   files:
