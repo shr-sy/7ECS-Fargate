@@ -85,7 +85,7 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_policy_attach" {
 }
 
 #########################################
-# CodePipeline Role & Policy (GitHub Webhook version — No CodeStar)
+# CodePipeline Role & Policy (GitHub Webhook — No CodeStar)
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_assume" {
@@ -110,8 +110,7 @@ resource "aws_iam_role" "codepipeline_role" {
 
 data "aws_iam_policy_document" "codepipeline_policy_doc" {
 
-  # REMOVE CodeStar permissions (Not needed)
-  # ADD GitHub source integration permissions instead
+  # Basic pipeline access
   statement {
     actions = [
       "codepipeline:GetPipeline",
@@ -122,11 +121,40 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # Allow CodePipeline to pull from GitHub using OAuth token
+  # Allow CodePipeline to pull OAuth token from Secrets Manager
   statement {
     actions = [
       "secretsmanager:GetSecretValue",
       "kms:Decrypt"
+    ]
+    resources = ["*"]
+  }
+
+  # ⭐ ADDED FOR GITHUB WEBHOOK
+  # Register & validate GitHub webhook with CodePipeline
+  statement {
+    actions = [
+      "codepipeline:PutWebhook",
+      "codepipeline:DeleteWebhook",
+      "codepipeline:RegisterWebhookWithThirdParty",
+      "codepipeline:DeregisterWebhookWithThirdParty"
+    ]
+    resources = ["*"]
+  }
+
+  # ⭐ ADDED — allow KMS decrypt for artifact bucket (required)
+  statement {
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey"
+    ]
+    resources = ["*"]
+  }
+
+  # ⭐ ADDED — ECS IAM role lookup
+  statement {
+    actions = [
+      "iam:GetRole"
     ]
     resources = ["*"]
   }
