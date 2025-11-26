@@ -25,99 +25,6 @@ data "aws_secretsmanager_secret_version" "github_token" {
 }
 
 ############################################
-# CODEPIPELINE IAM ROLE
-############################################
-resource "aws_iam_role" "codepipeline_role" {
-  name = "${var.project_name}-cp-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect    = "Allow",
-      Principal = { Service = "codepipeline.amazonaws.com" },
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-############################################
-# CODEPIPELINE POLICY
-############################################
-resource "aws_iam_role_policy" "codepipeline_policy" {
-  role = aws_iam_role.codepipeline_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-
-      # S3
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:ListBucket"
-        ]
-        Resource = ["*"]
-      },
-
-      # CodeBuild
-      {
-        Effect = "Allow"
-        Action = [
-          "codebuild:BatchGetBuilds",
-          "codebuild:StartBuild"
-        ]
-        Resource = ["*"]
-      },
-
-      # ECS
-      {
-        Effect = "Allow"
-        Action = [
-          "ecs:DescribeServices",
-          "ecs:UpdateService",
-          "ecs:RegisterTaskDefinition",
-          "ecs:DescribeClusters"
-        ]
-        Resource = ["*"]
-      },
-
-      # Allow IAM PassRole
-      {
-        Effect = "Allow"
-        Action = [
-          "iam:PassRole"
-        ]
-        Resource = ["*"]
-      },
-
-      # GitHub Webhook Permissions
-      {
-        Effect = "Allow"
-        Action = [
-          "codepipeline:PutWebhook",
-          "codepipeline:DeleteWebhook",
-          "codepipeline:RegisterWebhookWithThirdParty",
-          "codepipeline:DeregisterWebhookWithThirdParty"
-        ]
-        Resource = ["*"]
-      },
-
-      # Secrets Manager Decrypt Token
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue",
-          "kms:Decrypt"
-        ]
-        Resource = ["*"]
-      }
-    ]
-  })
-}
-
-############################################
 # CODEPIPELINE RESOURCE
 ############################################
 resource "aws_codepipeline" "pipeline" {
@@ -129,9 +36,9 @@ resource "aws_codepipeline" "pipeline" {
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
-  ############################################
-  # SOURCE STAGE — GitHub Webhook
-  ############################################
+  #########################
+  # SOURCE (GitHub)
+  #########################
   stage {
     name = "Source"
 
@@ -153,9 +60,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ############################################
-  # BUILD STAGE — CodeBuild
-  ############################################
+  #########################
+  # BUILD (CodeBuild)
+  #########################
   stage {
     name = "Build"
 
@@ -174,9 +81,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ############################################
-  # DEPLOY STAGE — ECS
-  ############################################
+  #########################
+  # DEPLOY (ECS)
+  #########################
   stage {
     name = "Deploy"
 
@@ -198,7 +105,7 @@ resource "aws_codepipeline" "pipeline" {
 }
 
 ############################################
-# CODEPIPELINE WEBHOOK (GitHub Trigger)
+# CODEPIPELINE WEBHOOK
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
