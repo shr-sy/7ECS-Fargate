@@ -1,12 +1,4 @@
 ############################################
-# CodeStar GitHub Connection
-############################################
-resource "aws_codestarconnections_connection" "github" {
-  name          = "${var.project_name}-github-connection"
-  provider_type = "GitHub"
-}
-
-############################################
 # Pipeline S3 Bucket
 ############################################
 resource "random_id" "bucket_id" {
@@ -29,39 +21,37 @@ resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
-  ################################
-  # Artifact Store (S3)
-  ################################
   artifact_store {
     type     = "S3"
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
-  ################################
-  # SOURCE STAGE — GitHub → CodePipeline
-  ################################
+  ############################################
+  # NEW SOURCE STAGE — GitHub Webhook
+  ############################################
   stage {
     name = "Source"
 
     action {
-      name             = "SourceAction"
+      name             = "GitHubSource"
       category         = "Source"
-      owner            = "AWS"
-      provider         = "CodeStarSourceConnection"
+      owner            = "ThirdParty"
+      provider         = "GitHub"
       version          = "1"
       output_artifacts = ["source_output"]
 
       configuration = {
-        ConnectionArn        = aws_codestarconnections_connection.github.arn
-        FullRepositoryId     = var.github_repo
-        BranchName           = var.github_branch
-        OutputArtifactFormat = "CODE_ZIP"
+        Owner                = var.github_owner          # NEW
+        Repo                 = var.github_repo_name      # NEW
+        Branch               = var.github_branch         # existing
+        OAuthToken           = var.github_oauth_token    # NEW
+        PollForSourceChanges = false                     # REQUIRED for webhook
       }
     }
   }
 
   ################################
-  # BUILD STAGE — CodeBuild
+  # BUILD STAGE
   ################################
   stage {
     name = "Build"
@@ -82,7 +72,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ################################
-  # DEPLOY STAGE — ECS Deploy
+  # DEPLOY STAGE
   ################################
   stage {
     name = "Deploy"
@@ -103,3 +93,23 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 }
+
+############################################
+# WEBHOOK RESOURCE (Triggers Pipeline on Push)
+############################################
+resource "aws_codepipeline_webhook" "github_webhook" {
+  name            = "${var.project_name}-github-webhook"
+  authentication  = "GITHUB_HMAC"
+  target_action   = "GitHubSource"
+  target_pipeline = aws_codepipeline.pipeline.name
+
+  authentication_configuration {
+    secret_token = var.github_webhook_secret
+  }
+
+  filter {
+    json_path    = "$.ref"
+    match_equals = "refs/heads/${var.github_branch}"
+  }
+}
+
