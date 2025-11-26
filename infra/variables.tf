@@ -33,6 +33,11 @@ variable "github_branch" {
   default     = "main"
 }
 
+variable "github_oauth_token" {
+  type      = string
+  sensitive = true
+}
+
 # GitHub PAT stored directly in Secrets Manager
 variable "github_oauth_token_secret_name" {
   description = "Name of AWS Secrets Manager secret storing the GitHub OAuth token"
