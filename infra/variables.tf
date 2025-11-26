@@ -39,22 +39,21 @@ variable "github_branch" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub OAuth Token (PAT) stored in AWS Secrets Manager
+# GitHub OAuth Token (PAT)
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
   description = "Name of AWS Secrets Manager secret containing GitHub PAT"
   type        = string
 }
 
-# Secret VALUE inside the secret
 variable "github_oauth_token" {
-  description = "GitHub Personal Access Token (PAT) stored in Secrets Manager"
+  description = "GitHub Personal Access Token (PAT)"
   type        = string
   sensitive   = true
 }
 
 # ----------------------------------------------------------------------
-# GitHub Webhook Secret (HMAC) — Name + Value
+# GitHub Webhook Secret (HMAC)
 # ----------------------------------------------------------------------
 variable "github_webhook_secret_name" {
   description = "Name of the Secrets Manager secret storing GitHub webhook secret"
@@ -73,7 +72,6 @@ variable "github_webhook_secret" {
 variable "services" {
   description = "List of microservices (used for ECR, ECS, CodeBuild)"
   type        = list(string)
-
   default = [
     "auth",
     "users",
@@ -88,7 +86,6 @@ variable "services" {
 variable "service_ports" {
   description = "Port mapping for each microservice"
   type        = map(number)
-
   default = {
     auth          = 3001
     users         = 3002
@@ -100,9 +97,8 @@ variable "service_ports" {
   }
 }
 
-# The main service behind ALB
 variable "main_service" {
-  description = "Primary microservice that ALB forwards traffic to"
+  description = "Primary microservice behind ALB"
   type        = string
   default     = "auth"
 }
@@ -126,10 +122,21 @@ variable "public_subnets" {
 }
 
 variable "private_subnets" {
-  description = "Private subnets for ECS tasks"
+  description = "Private subnet CIDRs for ECS"
   type        = list(string)
   default = [
     "10.0.11.0/24",
     "10.0.12.0/24"
   ]
+}
+
+# IDs required by ECS / ALB (Generated from module.vpc)
+variable "private_subnet_ids" {
+  description = "Private subnet IDs used by ECS tasks"
+  type        = list(string)
+}
+
+variable "public_subnet_ids" {
+  description = "Public subnet IDs used for ALB"
+  type        = list(string)
 }
