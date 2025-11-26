@@ -10,11 +10,11 @@ resource "random_id" "bucket_id" {
 ############################################
 resource "aws_s3_bucket" "cp_bucket" {
   bucket = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
-}
 
-resource "aws_s3_bucket_acl" "cp_bucket_acl" {
-  bucket = aws_s3_bucket.cp_bucket.id
-  acl    = "private"
+  tags = {
+    Name        = "${var.project_name}-cp-bucket"
+    Environment = var.environment
+  }
 }
 
 ############################################
@@ -33,7 +33,7 @@ resource "aws_codepipeline" "pipeline" {
 
   artifact_store {
     type     = "S3"
-    location = aws_s3_bucket.cp_bucket.bucket
+    location = aws_s3_bucket.cp_bucket.id
   }
 
   ############################################
@@ -61,7 +61,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################
-  # BUILD STAGE
+  # BUILD STAGE — CodeBuild
   ############################################
   stage {
     name = "Build"
@@ -102,10 +102,6 @@ resource "aws_codepipeline" "pipeline" {
       }
     }
   }
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 ############################################
@@ -127,8 +123,9 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   }
 }
 
-# ❌ IMPORTANT:
-# The resource aws_codepipeline_webhook_registration DOES NOT EXIST.
-# It has been removed from AWS provider.
-# WE MUST NOT INCLUDE IT.
-
+############################################
+# EXPORT WEBHOOK URL
+############################################
+output "github_webhook_url" {
+  value = aws_codepipeline_webhook.github_webhook.url
+}
