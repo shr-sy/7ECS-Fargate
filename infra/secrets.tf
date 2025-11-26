@@ -1,31 +1,30 @@
-############################################################
-# GitHub OAuth Token Secret
-############################################################
-
+###############################################
+# GitHub OAuth Token Secret (USED BY CODEPIPELINE)
+###############################################
 resource "aws_secretsmanager_secret" "github_oauth_secret" {
-  name = "github-oauth-token"
+  name = "hcp-ecs-github-token"
 }
 
 resource "aws_secretsmanager_secret_version" "github_oauth_secret_version" {
-  secret_id = aws_secretsmanager_secret.github_oauth_secret.id
-
-  secret_string = jsonencode({
-    github_oauth_token = var.github_oauth_token
-  })
+  secret_id     = aws_secretsmanager_secret.github_oauth_secret.id
+  secret_string = var.github_oauth_token
 }
 
-############################################################
+###############################################
 # GitHub Webhook Secret
-############################################################
-
+###############################################
 resource "aws_secretsmanager_secret" "github_webhook_secret" {
   name = var.github_webhook_secret_name
 }
 
 resource "aws_secretsmanager_secret_version" "github_webhook_secret_version" {
-  secret_id = aws_secretsmanager_secret.github_webhook_secret.id
+  secret_id     = aws_secretsmanager_secret.github_webhook_secret.id
+  secret_string = var.github_webhook_secret
+}
 
-  secret_string = jsonencode({
-    webhook_secret = var.github_webhook_secret
-  })
+###############################################
+# Data Source for GitHub OAuth Token
+###############################################
+data "aws_secretsmanager_secret_version" "github_token" {
+  secret_id = aws_secretsmanager_secret.github_oauth_secret.id
 }
