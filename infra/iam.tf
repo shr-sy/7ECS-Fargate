@@ -29,12 +29,12 @@ data "aws_iam_policy_document" "codebuild_policy" {
       "ecr:BatchGetImage",
       "ecr:BatchCheckLayerAvailability",
 
-      # logs
+      # CloudWatch Logs
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
 
-      # s3 (store artifacts)
+      # S3 (artifacts)
       "s3:*",
 
       # ECS deploy
@@ -42,10 +42,10 @@ data "aws_iam_policy_document" "codebuild_policy" {
       "ecs:UpdateService",
       "ecs:DescribeServices",
 
-      # roles
+      # Pass roles
       "iam:PassRole",
 
-      # secrets
+      # Parameter Store & Secrets Manager
       "ssm:GetParameters",
       "secretsmanager:GetSecretValue"
     ]
@@ -60,7 +60,7 @@ resource "aws_iam_role_policy" "codebuild_policy_attach" {
 }
 
 #########################################
-# ECS Task Execution Role
+# ECS Task Execution Role (one canonical role)
 #########################################
 
 data "aws_iam_policy_document" "ecs_task_exec_assume" {
@@ -85,7 +85,7 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_policy_attach" {
 }
 
 #########################################
-# CodePipeline Role
+# CodePipeline Role & Policy (with CodeStar usage)
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_assume" {
@@ -108,13 +108,9 @@ resource "aws_iam_role" "codepipeline_role" {
   }
 }
 
-#########################################
-# CodePipeline IAM Policy
-#########################################
-
 data "aws_iam_policy_document" "codepipeline_policy_doc" {
 
-  # Allow CodePipeline to use Connection
+  # Allow CodePipeline to use the specified CodeStar connection
   statement {
     actions = [
       "codestar-connections:UseConnection",
@@ -156,7 +152,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     resources = ["*"]
   }
 
-  # Pass IAM roles to ECS
+  # Pass IAM roles to ECS (required to call ecs:UpdateService with task role)
   statement {
     actions = [
       "iam:PassRole"
