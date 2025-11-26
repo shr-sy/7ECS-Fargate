@@ -34,7 +34,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################
-  # NEW SOURCE STAGE — GitHub Webhook
+  # SOURCE STAGE — GitHub Webhook
   ############################################
   stage {
     name = "Source"
@@ -48,18 +48,18 @@ resource "aws_codepipeline" "pipeline" {
       output_artifacts = ["source_output"]
 
       configuration = {
-        Owner                = split("/", var.github_repo)[0]     # FIXED
-        Repo                 = split("/", var.github_repo)[1]     # FIXED
-        Branch               = var.github_branch
-        OAuthToken           = data.aws_secretsmanager_secret_version.github_token.secret_string
-        PollForSourceChanges = false
+        Owner                  = split("/", var.github_repo)[0]
+        Repo                   = split("/", var.github_repo)[1]
+        Branch                 = var.github_branch
+        OAuthToken             = data.aws_secretsmanager_secret_version.github_token.secret_string
+        PollForSourceChanges   = false
       }
     }
   }
 
-  ################################
-  # BUILD STAGE
-  ################################
+  ############################################
+  # BUILD STAGE — CodeBuild
+  ############################################
   stage {
     name = "Build"
 
@@ -78,9 +78,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ################################
-  # DEPLOY STAGE
-  ################################
+  ############################################
+  # DEPLOY STAGE — ECS Fargate
+  ############################################
   stage {
     name = "Deploy"
 
@@ -99,16 +99,24 @@ resource "aws_codepipeline" "pipeline" {
       }
     }
   }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 ############################################
-# WEBHOOK RESOURCE (Triggers Pipeline on Push)
+# GitHub Webhook — Triggers Pipeline on Push
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
-  authentication  = "GITHUB_HMAC"
+  target_pipeline = aws_codepipeline.pipeline.name   # FIXED
   target_action   = "GitHubSource"
-  target_pipeline = aws_codepipeline.pipeline.arn   # FIXED
+
+  authentication = "GITHUB_HMAC"
+
+  ### Added role binding (required by AWS)
+  role_arn = aws_iam_role.codepipeline_role.arn
 
   authentication_configuration {
     secret_token = var.github_webhook_secret
@@ -118,4 +126,16 @@ resource "aws_codepipeline_webhook" "github_webhook" {
     json_path    = "$.ref"
     match_equals = "refs/heads/${var.github_branch}"
   }
+}
+
+############################################
+# Register Webhook with GitHub
+############################################
+resource "aws_codepipeline_webhook_registration" "github_registration" {
+  webhook = aws_codepipeline_webhook.github_webhook.id
+
+  depends_on = [
+    aws_codepipeline.pipeline,
+    aws_codepipeline_webhook.github_webhook
+  ]
 }
