@@ -70,7 +70,7 @@ resource "aws_ecs_service" "svc" {
   deployment_maximum_percent         = 200
 
   network_configuration {
-    subnets          = var.private_subnet_ids      # 🔥 FIXED: Correct variable name
+    subnets          = var.private_subnets     # 🔥 FIXED: Correct variable name
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = false
   }
