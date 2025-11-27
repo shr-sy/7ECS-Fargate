@@ -37,32 +37,6 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
 }
 
 ############################################
-# SECRETS MANAGER (AUTO-CREATED)
-############################################
-
-# GitHub PAT Secret
-resource "aws_secretsmanager_secret" "github_oauth_secret" {
-  name        = var.github_oauth_token_secret_name
-  description = "GitHub OAuth/PAT token for CodePipeline"
-}
-
-resource "aws_secretsmanager_secret_version" "github_oauth_secret_value" {
-  secret_id     = aws_secretsmanager_secret.github_oauth_secret.id
-  secret_string = var.github_oauth_token
-}
-
-# GitHub Webhook Secret
-resource "aws_secretsmanager_secret" "github_webhook_secret" {
-  name        = var.github_webhook_secret_name
-  description = "GitHub Webhook HMAC Secret"
-}
-
-resource "aws_secretsmanager_secret_version" "github_webhook_secret_value" {
-  secret_id     = aws_secretsmanager_secret.github_webhook_secret.id
-  secret_string = var.github_webhook_secret
-}
-
-############################################
 # CODEPIPELINE
 ############################################
 resource "aws_codepipeline" "pipeline" {
@@ -93,8 +67,8 @@ resource "aws_codepipeline" "pipeline" {
         Repo                 = var.github_repo_name
         Branch               = var.github_branch
 
-        # IMPORTANT: read PAT dynamically from Secrets Manager
-        OAuthToken           = aws_secretsmanager_secret_version.github_oauth_secret_value.secret_string
+        # Pull PAT from Secrets Manager (created in secrets.tf)
+        OAuthToken           = aws_secretsmanager_secret_version.github_oauth_secret_version.secret_string
 
         PollForSourceChanges = "false"
       }
@@ -102,7 +76,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################################
-  # BUILD STAGE (CodeBuild)
+  # BUILD STAGE
   ############################################################
   stage {
     name = "Build"
@@ -123,7 +97,7 @@ resource "aws_codepipeline" "pipeline" {
   }
 
   ############################################################
-  # DEPLOY STAGE (Deploy to ECS for all microservices)
+  # DEPLOY STAGE
   ############################################################
   stage {
     name = "Deploy"
@@ -156,7 +130,7 @@ resource "aws_codepipeline" "pipeline" {
 }
 
 ############################################
-# WEBHOOK (GitHub → CodePipeline trigger)
+# CODEPIPELINE WEBHOOK
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
@@ -165,7 +139,7 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   authentication  = "GITHUB_HMAC"
 
   authentication_configuration {
-    secret_token = aws_secretsmanager_secret_version.github_webhook_secret_value.secret_string
+    secret_token = aws_secretsmanager_secret_version.github_webhook_secret_version.secret_string
   }
 
   filter {
