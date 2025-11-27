@@ -2,21 +2,34 @@ version: 0.2
 
 env:
   variables:
-    AWS_DEFAULT_REGION: "us-east-1"
     MICRO_DIR: "microservices"
-    AWS_ACCOUNT_ID: ""   # <-- Fill this
 
 phases:
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
+
       - echo "AWS CLI version:"
       - aws --version
 
+      # Auto-detect region provided by CodeBuild
+      - export AWS_DEFAULT_REGION=$AWS_REGION
+
+      # Auto-detect AWS Account ID
+      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+      - echo "Using AWS Account ID: $AWS_ACCOUNT_ID"
+      - echo "Using Region: $AWS_DEFAULT_REGION"
+
+      # Debug MICRO_DIR
+      - echo "Microservices Directory: $MICRO_DIR"
+      - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR not found!"
+
+      # Docker login
       - echo "Logging into Amazon ECR..."
-      - |
-        aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
-        docker login --username AWS --password-stdin \
+      - >
+        aws ecr get-login-password --region $AWS_DEFAULT_REGION |
+        docker login --username AWS --password-stdin
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
       - echo "==== PRE-BUILD COMPLETE ===="
@@ -31,12 +44,15 @@ phases:
           NAME=$(basename "$svc")
           echo "---- Building service: $NAME ----"
 
+          # Build latest image
           docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
 
+          # Tag image with commit hash
           docker tag \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
+          # Push image
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
