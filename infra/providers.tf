@@ -1,10 +1,5 @@
 provider "aws" {
-  region                  = var.aws_region
-  skip_metadata_api_check = true
-
-  assume_role {
-    role_arn = aws_iam_role.terraform_execution_role.arn
-  }
+  region = var.aws_region
 
   default_tags {
     tags = {
