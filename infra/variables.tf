@@ -41,18 +41,19 @@ variable "github_owner" {
 }
 
 variable "github_repo_name" {
-  description = "GitHub repository name (without owner)"
+  description = "GitHub repository name"
   type        = string
 }
 
 variable "github_branch" {
-  description = "GitHub branch monitored by CodePipeline"
+  description = "Branch monitored by CodePipeline"
   type        = string
   default     = "main"
 }
 
 # ----------------------------------------------------------------------
-# GitHub Secrets Manager Config (Names only)
+# Secrets Manager — Secret Names (not values)
+# These will be created if not existing
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
   description = "Name of Secrets Manager secret storing GitHub PAT"
@@ -61,31 +62,31 @@ variable "github_oauth_token_secret_name" {
 }
 
 variable "github_webhook_secret_name" {
-  description = "Name of Secrets Manager secret storing webhook secret"
+  description = "Name of Secrets Manager secret storing webhook shared secret"
   type        = string
   default     = "github-webhook-secret"
 }
 
 # ----------------------------------------------------------------------
-# Secrets Supplied by HCP Terraform (Actual values)
+# Actual secret values supplied via HCP Terraform variables
 # ----------------------------------------------------------------------
 variable "github_oauth_token" {
-  description = "GitHub Personal Access Token"
+  description = "GitHub Personal Access Token (PAT)"
   type        = string
   sensitive   = true
 }
 
 variable "github_webhook_secret" {
-  description = "Webhook secret for GitHub → CodePipeline"
+  description = "Webhook secret used for GitHub → CodePipeline"
   type        = string
   sensitive   = true
 }
 
 # ----------------------------------------------------------------------
-# Microservices & Ports
+# ECS Microservices & Ports
 # ----------------------------------------------------------------------
 variable "services" {
-  description = "List of microservices for ECS, ECR, and CodeBuild"
+  description = "List of microservices deployed to ECS"
   type        = list(string)
 
   default = [
@@ -115,7 +116,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary microservice used by ALB"
+  description = "Primary microservice used behind the ALB"
   type        = string
   default     = "auth"
 }
@@ -149,51 +150,11 @@ variable "private_subnets" {
   ]
 }
 
-############################################
-# VARIABLES
-############################################
-
-variable "project_name" {
-  description = "Project name prefix used for resources"
-  type        = string
-}
-
-variable "environment" {
-  description = "Environment name (dev|qa|prod)"
-  type        = string
-  default     = "dev"
-}
-
+# ----------------------------------------------------------------------
+# CodePipeline Bucket Suffix (optional)
+# ----------------------------------------------------------------------
 variable "bucket_suffix" {
-  description = "Suffix used in the artifact bucket name"
+  description = "Suffix used for CodePipeline artifact bucket"
   type        = string
   default     = "cp"
 }
-
-variable "github_owner" {
-  type = string
-}
-
-variable "github_repo_name" {
-  type = string
-}
-
-variable "github_branch" {
-  type    = string
-  default = "main"
-}
-
-variable "github_oauth_secret_id" {
-  description = "Secrets Manager secret name or ARN containing GitHub OAuth token"
-  type        = string
-}
-
-variable "github_webhook_secret" {
-  type = string
-}
-
-variable "services" {
-  description = "List/map of service names used in the Deploy stage"
-  type        = any
-}
-
