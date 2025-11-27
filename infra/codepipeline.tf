@@ -15,10 +15,6 @@ resource "aws_s3_bucket" "cp_bucket" {
     Name        = "${var.project_name}-cp-bucket"
     Environment = var.environment
   }
-
-  lifecycle {
-    prevent_destroy = false
-  }
 }
 
 resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
@@ -44,7 +40,7 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
 # SECRETS MANAGER (AUTO-CREATED)
 ############################################
 
-# GitHub PAT Secret (create if missing)
+# GitHub PAT Secret
 resource "aws_secretsmanager_secret" "github_oauth_secret" {
   name        = var.github_oauth_token_secret_name
   description = "GitHub OAuth/PAT token for CodePipeline"
@@ -55,7 +51,7 @@ resource "aws_secretsmanager_secret_version" "github_oauth_secret_value" {
   secret_string = var.github_oauth_token
 }
 
-# GitHub Webhook Secret (create if missing)
+# GitHub Webhook Secret
 resource "aws_secretsmanager_secret" "github_webhook_secret" {
   name        = var.github_webhook_secret_name
   description = "GitHub Webhook HMAC Secret"
@@ -78,6 +74,9 @@ resource "aws_codepipeline" "pipeline" {
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
+  ############################################################
+  # SOURCE STAGE (GitHub → CodePipeline)
+  ############################################################
   stage {
     name = "Source"
 
@@ -94,7 +93,7 @@ resource "aws_codepipeline" "pipeline" {
         Repo                 = var.github_repo_name
         Branch               = var.github_branch
 
-        # Use the Terraform-created secret value
+        # Terraform-created secret value (PAT)
         OAuthToken           = aws_secretsmanager_secret_version.github_oauth_secret_value.secret_string
 
         PollForSourceChanges = "false"
@@ -102,6 +101,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  ############################################################
+  # BUILD STAGE (CodeBuild)
+  ############################################################
   stage {
     name = "Build"
 
@@ -120,11 +122,15 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  ############################################################
+  # DEPLOY STAGE (Deploy to ECS for all microservices)
+  ############################################################
   stage {
     name = "Deploy"
 
     dynamic "action" {
       for_each = var.services
+
       content {
         name            = "Deploy-${action.value}"
         category        = "Deploy"
@@ -145,12 +151,12 @@ resource "aws_codepipeline" "pipeline" {
   depends_on = [
     aws_codebuild_project.build_all,
     aws_ecs_cluster.main,
-    aws_s3_bucket_public_access_block.cp_bucket_block,
+    aws_s3_bucket_public_access_block.cp_bucket_block
   ]
 }
 
 ############################################
-# WEBHOOK
+# WEBHOOK (GitHub → CodePipeline trigger)
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
@@ -170,7 +176,9 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   depends_on = [aws_codepipeline.pipeline]
 }
 
+############################################
+# OUTPUT
+############################################
 output "github_webhook_url" {
   value = aws_codepipeline_webhook.github_webhook.url
 }
-
