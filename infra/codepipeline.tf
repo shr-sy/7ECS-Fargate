@@ -93,7 +93,7 @@ resource "aws_codepipeline" "pipeline" {
         Repo                 = var.github_repo_name
         Branch               = var.github_branch
 
-        # Terraform-created secret value (PAT)
+        # IMPORTANT: read PAT dynamically from Secrets Manager
         OAuthToken           = aws_secretsmanager_secret_version.github_oauth_secret_value.secret_string
 
         PollForSourceChanges = "false"
