@@ -183,3 +183,45 @@ resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
   role       = aws_iam_role.codepipeline_role.name
   policy_arn = aws_iam_policy.codepipeline_policy.arn
 }
+
+resource "aws_iam_policy" "s3_force_delete_policy" {
+  name        = "s3-force-delete-policy"
+  description = "Allows Terraform to delete versioned S3 buckets"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetBucketVersioning",
+          "s3:PutBucketVersioning",
+          "s3:GetBucketLocation",
+          "s3:GetLifecycleConfiguration",
+          "s3:PutLifecycleConfiguration",
+          "s3:DeleteBucket"
+        ]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.cp_bucket.bucket}"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:DeleteObjectVersion",
+          "s3:ListBucketVersions",
+          "s3:ListBucketMultipartUploads",
+          "s3:AbortMultipartUpload"
+        ]
+        Resource = "arn:aws:s3:::${aws_s3_bucket.cp_bucket.bucket}/*"
+      }
+    ]
+  })
+}
+
+# Attach the policy to your Terraform IAM role
+resource "aws_iam_role_policy_attachment" "attach_s3_force_delete" {
+  role       = var.terraform_role_name   # <-- You must define this variable
+  policy_arn = aws_iam_policy.s3_force_delete_policy.arn
+}
