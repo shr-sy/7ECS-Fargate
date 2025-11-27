@@ -190,7 +190,9 @@ resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
 # TERRAFORM EXECUTION ROLE (HCP)
 #########################################
 
-# Trusts your Terraform Cloud/HCP User ARN
+data "aws_caller_identity" "current" {}
+
+# Terraform execution role now trusts your AWS account root
 data "aws_iam_policy_document" "terraform_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -198,14 +200,14 @@ data "aws_iam_policy_document" "terraform_assume" {
     principals {
       type = "AWS"
       identifiers = [
-        var.terraform_user_arn
+        "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root"
       ]
     }
   }
 }
 
 resource "aws_iam_role" "terraform_execution_role" {
-  name               = "${var.project_name}-terraform-exec-role"
+  name               = var.terraform_role_name
   assume_role_policy = data.aws_iam_policy_document.terraform_assume.json
 }
 
