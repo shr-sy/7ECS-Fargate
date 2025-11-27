@@ -3,6 +3,7 @@
 ############################################################
 resource "aws_secretsmanager_secret" "github_oauth_secret" {
   name                    = var.github_oauth_token_secret_name
+  description             = "GitHub OAuth/PAT token for CodePipeline"
   recovery_window_in_days = 0
 
   tags = {
@@ -21,9 +22,8 @@ resource "aws_secretsmanager_secret_version" "github_oauth_secret_version" {
   secret_string = var.github_oauth_token
 
   lifecycle {
-    ignore_changes = [
-      secret_string
-    ]
+    # Allows updating PAT in console without causing Terraform drift
+    ignore_changes = [ secret_string ]
   }
 }
 
@@ -32,6 +32,7 @@ resource "aws_secretsmanager_secret_version" "github_oauth_secret_version" {
 ############################################################
 resource "aws_secretsmanager_secret" "github_webhook_secret" {
   name                    = var.github_webhook_secret_name
+  description             = "GitHub Webhook HMAC Secret"
   recovery_window_in_days = 0
 
   tags = {
@@ -50,8 +51,6 @@ resource "aws_secretsmanager_secret_version" "github_webhook_secret_version" {
   secret_string = var.github_webhook_secret
 
   lifecycle {
-    ignore_changes = [
-      secret_string
-    ]
+    ignore_changes = [ secret_string ]
   }
 }
