@@ -1,5 +1,5 @@
 #########################################
-# CodeBuild Role & Policy
+# CODEBUILD ROLE & POLICY
 #########################################
 
 data "aws_iam_policy_document" "codebuild_assume" {
@@ -21,6 +21,7 @@ resource "aws_iam_role" "codebuild" {
 data "aws_iam_policy_document" "codebuild_policy" {
   statement {
     actions = [
+      # ECR Push
       "ecr:GetAuthorizationToken",
       "ecr:BatchCheckLayerAvailability",
       "ecr:InitiateLayerUpload",
@@ -29,18 +30,22 @@ data "aws_iam_policy_document" "codebuild_policy" {
       "ecr:PutImage",
       "ecr:BatchGetImage",
 
+      # CloudWatch Logs
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
 
+      # S3
       "s3:GetObject",
       "s3:PutObject",
       "s3:ListBucket",
 
+      # ECS Deploy
       "ecs:RegisterTaskDefinition",
       "ecs:DescribeServices",
       "ecs:UpdateService",
 
+      # Secrets
       "iam:PassRole",
       "secretsmanager:GetSecretValue",
       "ssm:GetParameters"
@@ -56,7 +61,7 @@ resource "aws_iam_role_policy" "codebuild_policy_attach" {
 }
 
 #########################################
-# ECS Task Execution Role
+# ECS TASK EXECUTION ROLE
 #########################################
 
 data "aws_iam_policy_document" "ecs_task_exec_assume" {
@@ -81,7 +86,7 @@ resource "aws_iam_role_policy_attachment" "ecs_exec_policy_attach" {
 }
 
 #########################################
-# CodePipeline Role
+# CODEPIPELINE ROLE
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_assume" {
@@ -105,7 +110,7 @@ resource "aws_iam_role" "codepipeline_role" {
 }
 
 #########################################
-# CodePipeline Inline Policy
+# CODEPIPELINE INLINE POLICY
 #########################################
 
 data "aws_iam_policy_document" "codepipeline_policy_doc" {
@@ -141,8 +146,8 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
     actions = [
       "ecs:DescribeClusters",
       "ecs:DescribeServices",
-      "ecs:UpdateService",
-      "ecs:RegisterTaskDefinition"
+      "ecs:RegisterTaskDefinition",
+      "ecs:UpdateService"
     ]
     resources = ["*"]
   }
@@ -166,9 +171,7 @@ data "aws_iam_policy_document" "codepipeline_policy_doc" {
   }
 
   statement {
-    actions = [
-      "iam:PassRole"
-    ]
+    actions = ["iam:PassRole"]
     resources = ["*"]
   }
 }
@@ -184,11 +187,10 @@ resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
 }
 
 #########################################
-# Terraform Execution Role
-#########################################
-# This replaces terraform_role_name completely
+# TERRAFORM EXECUTION ROLE (HCP)
 #########################################
 
+# Trusts your Terraform Cloud/HCP User ARN
 data "aws_iam_policy_document" "terraform_assume" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -208,7 +210,7 @@ resource "aws_iam_role" "terraform_execution_role" {
 }
 
 #########################################
-# S3 Force Delete Policy
+# S3 FORCE DELETE POLICY (FOR TERRAFORM)
 #########################################
 
 resource "aws_iam_policy" "s3_force_delete_policy" {
