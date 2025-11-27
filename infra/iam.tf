@@ -1,4 +1,11 @@
 #########################################
+# GLOBAL DATA SOURCES
+#########################################
+
+# Only one caller identity allowed per module
+data "aws_caller_identity" "current" {}
+
+#########################################
 # CODEBUILD ROLE & POLICY
 #########################################
 
@@ -190,9 +197,6 @@ resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
 # TERRAFORM EXECUTION ROLE (HCP)
 #########################################
 
-data "aws_caller_identity" "current" {}
-
-# Terraform execution role now trusts your AWS account root
 data "aws_iam_policy_document" "terraform_assume" {
   statement {
     actions = ["sts:AssumeRole"]
