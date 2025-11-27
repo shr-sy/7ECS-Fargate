@@ -6,7 +6,6 @@ env:
     MICRO_DIR: "microservices"
 
 phases:
-
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
@@ -20,7 +19,6 @@ phases:
 
       - echo "==== PRE-BUILD COMPLETE ===="
 
-
   build:
     commands:
       - echo "==== BUILD START ===="
@@ -32,21 +30,17 @@ phases:
 
           echo "---- Building service: $NAME ----"
 
-          # Build image
           docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
 
-          # Tag image with commit SHA
           docker tag \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
-          # Push both latest and commit-tagged images
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
 
       - echo "==== BUILD COMPLETE ===="
-
 
   post_build:
     commands:
@@ -54,7 +48,7 @@ phases:
       - echo "Creating imagedefinitions.json for ECS CodeDeploy..."
 
       - |
-        python3 - <<'PY'
+        python3 - << 'PY'
 import json, os
 
 micro_dir = "microservices"
@@ -77,7 +71,6 @@ print(json.dumps(output, indent=2))
 PY
 
       - echo "==== POST-BUILD COMPLETE ===="
-
 
 artifacts:
   files:
