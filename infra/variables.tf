@@ -41,52 +41,36 @@ variable "github_owner" {
 }
 
 variable "github_repo_name" {
-  description = "GitHub repository name"
+  description = "GitHub repository name (without owner)"
   type        = string
 }
 
 variable "github_branch" {
-  description = "Branch monitored by CodePipeline"
+  description = "GitHub branch monitored by CodePipeline"
   type        = string
   default     = "main"
 }
 
 # ----------------------------------------------------------------------
-# Secrets Manager — Secret Names (not values)
-# These will be created if not existing
+# Secrets Manager: Secret Names
 # ----------------------------------------------------------------------
-variable "github_oauth_token_secret_name" {
-  description = "Name of Secrets Manager secret storing GitHub PAT"
+variable "github_oauth_secret_id" {
+  description = "Secret name or ARN storing GitHub OAuth/PAT token"
   type        = string
   default     = "hcp-ecs-github-token"
 }
 
 variable "github_webhook_secret_name" {
-  description = "Name of Secrets Manager secret storing webhook shared secret"
+  description = "Secret name storing GitHub webhook secret"
   type        = string
   default     = "github-webhook-secret"
 }
 
 # ----------------------------------------------------------------------
-# Actual secret values supplied via HCP Terraform variables
-# ----------------------------------------------------------------------
-variable "github_oauth_token" {
-  description = "GitHub Personal Access Token (PAT)"
-  type        = string
-  sensitive   = true
-}
-
-variable "github_webhook_secret" {
-  description = "Webhook secret used for GitHub → CodePipeline"
-  type        = string
-  sensitive   = true
-}
-
-# ----------------------------------------------------------------------
-# ECS Microservices & Ports
+# Microservices & Ports
 # ----------------------------------------------------------------------
 variable "services" {
-  description = "List of microservices deployed to ECS"
+  description = "List of microservices for ECS, ECR, and CodeBuild"
   type        = list(string)
 
   default = [
@@ -116,7 +100,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary microservice used behind the ALB"
+  description = "Primary microservice used by ALB"
   type        = string
   default     = "auth"
 }
@@ -151,10 +135,10 @@ variable "private_subnets" {
 }
 
 # ----------------------------------------------------------------------
-# CodePipeline Bucket Suffix (optional)
+# S3 Bucket Settings (CodePipeline Artifacts)
 # ----------------------------------------------------------------------
 variable "bucket_suffix" {
-  description = "Suffix used for CodePipeline artifact bucket"
+  description = "Suffix used in the artifact bucket name"
   type        = string
   default     = "cp"
 }
