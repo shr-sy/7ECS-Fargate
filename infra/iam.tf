@@ -45,7 +45,6 @@ data "aws_iam_policy_document" "codebuild_policy" {
       "secretsmanager:GetSecretValue",
       "ssm:GetParameters"
     ]
-
     resources = ["*"]
   }
 }
@@ -184,8 +183,36 @@ resource "aws_iam_role_policy_attachment" "codepipeline_policy_attach" {
   policy_arn = aws_iam_policy.codepipeline_policy.arn
 }
 
+#########################################
+# Terraform Execution Role
+#########################################
+# This replaces terraform_role_name completely
+#########################################
+
+data "aws_iam_policy_document" "terraform_assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type = "AWS"
+      identifiers = [
+        var.terraform_user_arn
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "terraform_execution_role" {
+  name               = "${var.project_name}-terraform-exec-role"
+  assume_role_policy = data.aws_iam_policy_document.terraform_assume.json
+}
+
+#########################################
+# S3 Force Delete Policy
+#########################################
+
 resource "aws_iam_policy" "s3_force_delete_policy" {
-  name        = "s3-force-delete-policy"
+  name        = "${var.project_name}-s3-force-delete-policy"
   description = "Allows Terraform to delete versioned S3 buckets"
 
   policy = jsonencode({
@@ -220,8 +247,7 @@ resource "aws_iam_policy" "s3_force_delete_policy" {
   })
 }
 
-# Attach the policy to your Terraform IAM role
 resource "aws_iam_role_policy_attachment" "attach_s3_force_delete" {
-  role       = var.terraform_role_name   # <-- You must define this variable
+  role       = aws_iam_role.terraform_execution_role.name
   policy_arn = aws_iam_policy.s3_force_delete_policy.arn
 }
