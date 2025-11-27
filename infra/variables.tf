@@ -23,11 +23,13 @@ variable "environment" {
 }
 
 # ----------------------------------------------------------------------
-# Terraform Cloud User ARN (Required for IAM Assume Role)
+# Terraform Cloud/HCP Execution Role
+# (This is created by Terraform so its ARN will be known automatically)
 # ----------------------------------------------------------------------
-variable "terraform_user_arn" {
-  description = "ARN of the Terraform Cloud/HCP Terraform user/role"
+variable "terraform_role_name" {
+  description = "IAM role name used by HCP Terraform to assume into AWS"
   type        = string
+  default     = "terraform-execution-role"
 }
 
 # ----------------------------------------------------------------------
@@ -50,29 +52,31 @@ variable "github_branch" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub Personal Access Token (PAT) - Stored in Secrets Manager
+# GitHub Secrets Manager Config (Names only, NOT values)
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
-  description = "Name of AWS Secrets Manager secret storing GitHub PAT"
+  description = "Name of Secrets Manager secret that stores the GitHub PAT"
   type        = string
+  default     = "hcp-ecs-github-token"
 }
 
+variable "github_webhook_secret_name" {
+  description = "Name of Secrets Manager secret storing GitHub webhook secret"
+  type        = string
+  default     = "github-webhook-secret"
+}
+
+# ----------------------------------------------------------------------
+# Sensitive Values (HCP Terraform workspace should provide these)
+# ----------------------------------------------------------------------
 variable "github_oauth_token" {
-  description = "GitHub Personal Access Token"
+  description = "GitHub Personal Access Token (PAT)"
   type        = string
   sensitive   = true
 }
 
-# ----------------------------------------------------------------------
-# GitHub Webhook Secret (HMAC Key)
-# ----------------------------------------------------------------------
-variable "github_webhook_secret_name" {
-  description = "Name of AWS Secrets Manager secret storing webhook secret"
-  type        = string
-}
-
 variable "github_webhook_secret" {
-  description = "HMAC secret for GitHub → CodePipeline webhook"
+  description = "Webhook secret for GitHub → CodePipeline"
   type        = string
   sensitive   = true
 }
