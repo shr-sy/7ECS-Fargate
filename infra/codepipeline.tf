@@ -1,15 +1,13 @@
 ############################################
 # LOCALS
 ############################################
-
 locals {
   cp_bucket_name = lower("${var.project_name}-${var.bucket_suffix}-${var.environment}")
 }
 
 ############################################
-# S3 BUCKET
+# S3 BUCKET FOR PIPELINE ARTIFACTS
 ############################################
-
 resource "aws_s3_bucket" "cp_bucket" {
   bucket = local.cp_bucket_name
 
@@ -39,19 +37,19 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 
-  depends_on = [
-    aws_s3_bucket_ownership_controls.cp_bucket_controls
-  ]
+  depends_on = [aws_s3_bucket_ownership_controls.cp_bucket_controls]
 }
 
 ############################################
-# SECRETS MANAGER
+# SECRETS MANAGER LOOKUP
 ############################################
 
+# 1. Get secret metadata
 data "aws_secretsmanager_secret" "github_oauth_secret" {
-  secret_id = var.github_oauth_secret_id
+  arn = var.github_oauth_secret_id
 }
 
+# 2. Get latest version
 data "aws_secretsmanager_secret_version" "github_token" {
   secret_id = data.aws_secretsmanager_secret.github_oauth_secret.id
 }
@@ -59,7 +57,6 @@ data "aws_secretsmanager_secret_version" "github_token" {
 ############################################
 # CODEPIPELINE
 ############################################
-
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
@@ -69,6 +66,9 @@ resource "aws_codepipeline" "pipeline" {
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
+  ############################################
+  # SOURCE STAGE
+  ############################################
   stage {
     name = "Source"
 
@@ -90,6 +90,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  ############################################
+  # BUILD STAGE
+  ############################################
   stage {
     name = "Build"
 
@@ -108,6 +111,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
+  ############################################
+  # DEPLOY STAGE (LOOP THROUGH SERVICES)
+  ############################################
   stage {
     name = "Deploy"
 
@@ -140,7 +146,6 @@ resource "aws_codepipeline" "pipeline" {
 ############################################
 # WEBHOOK
 ############################################
-
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
   target_pipeline = aws_codepipeline.pipeline.name
@@ -160,9 +165,8 @@ resource "aws_codepipeline_webhook" "github_webhook" {
 }
 
 ############################################
-# OUTPUT
+# OUTPUTS
 ############################################
-
 output "github_webhook_url" {
   value = aws_codepipeline_webhook.github_webhook.url
 }
