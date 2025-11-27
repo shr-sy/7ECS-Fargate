@@ -8,7 +8,7 @@ data "aws_caller_identity" "current" {}
 ############################################
 resource "aws_codebuild_project" "build_all" {
   name         = "${var.project_name}-build-all"
-  description  = "Build Docker images and push to ECR"
+  description  = "Builds and pushes Docker images for all microservices"
   service_role = aws_iam_role.codebuild.arn
 
   ############################################
@@ -20,6 +20,8 @@ resource "aws_codebuild_project" "build_all" {
     type                        = "LINUX_CONTAINER"
     privileged_mode             = true  # Required for Docker builds
 
+    # ========= ENV VARIABLES USED IN BUILDSPEC ========= #
+
     environment_variable {
       name  = "AWS_ACCOUNT_ID"
       value = data.aws_caller_identity.current.account_id
@@ -30,6 +32,12 @@ resource "aws_codebuild_project" "build_all" {
       value = var.aws_region
     }
 
+    # Path containing the microservices directories
+    environment_variable {
+      name  = "MICRO_DIR"
+      value = "microservices"
+    }
+
     environment_variable {
       name  = "PROJECT_NAME"
       value = var.project_name
@@ -37,7 +45,7 @@ resource "aws_codebuild_project" "build_all" {
   }
 
   ############################################
-  # SOURCE — From CodePipeline Artifact
+  # SOURCE — Provided by CodePipeline
   ############################################
   source {
     type      = "CODEPIPELINE"
@@ -45,14 +53,14 @@ resource "aws_codebuild_project" "build_all" {
   }
 
   ############################################
-  # ARTIFACTS — Deliver Back to Pipeline
+  # ARTIFACTS — Returned to CodePipeline
   ############################################
   artifacts {
     type = "CODEPIPELINE"
   }
 
   ############################################
-  # LOCAL CACHE — Faster Docker Builds
+  # LOCAL CACHE — Improves Docker Build Speed
   ############################################
   cache {
     type  = "LOCAL"
