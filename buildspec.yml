@@ -4,7 +4,6 @@ env:
   variables:
     AWS_DEFAULT_REGION: "us-east-1"
     MICRO_DIR: "microservices"
-    # Injected automatically from Terraform in codebuild.tf
     AWS_ACCOUNT_ID: ""
 
 phases:
@@ -15,8 +14,8 @@ phases:
       - aws --version
 
       - echo "Logging into Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
-          docker login --username AWS --password-stdin \
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login \
+          --username AWS --password-stdin \
           $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
       - echo "==== PRE-BUILD COMPLETE ===="
@@ -31,15 +30,12 @@ phases:
           NAME=$(basename $svc)
           echo "---- Building service: $NAME ----"
 
-          # Build image
           docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
 
-          # Tag using commit hash
           docker tag \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
-          # Push images
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
@@ -52,7 +48,7 @@ phases:
       - echo "Generating imagedefinitions.json..."
 
       - |
-        python3 - << 'PY'
+        python3 - <<EOF
         import os, json
 
         micro_dir = "microservices"
@@ -65,7 +61,6 @@ phases:
         region = os.environ["AWS_DEFAULT_REGION"]
         commit = os.environ["CODEBUILD_RESOLVED_SOURCE_VERSION"]
 
-        # Generate ECS deploy file
         output = [{
             "name": s,
             "imageUri": f"{account}.dkr.ecr.{region}.amazonaws.com/{s}:{commit}"
@@ -76,10 +71,9 @@ phases:
 
         print("Generated imagedefinitions.json:")
         print(json.dumps(output, indent=2))
-PY
+        EOF
 
       - echo "==== POST-BUILD COMPLETE ===="
-
 
 artifacts:
   files:
