@@ -52,24 +52,18 @@ variable "github_branch" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub Secrets (IMPORTANT)
+# GitHub Secrets (Auto-Created in Secrets Manager)
 # ----------------------------------------------------------------------
-variable "github_oauth_secret_id" {
-  description = "Secret name or ARN storing GitHub OAuth/PAT token"
+variable "github_oauth_token_secret_name" {
+  description = "Name for the Secrets Manager secret storing GitHub PAT"
   type        = string
   default     = "hcp-ecs-github-token"
 }
 
 variable "github_webhook_secret_name" {
-  description = "Secrets Manager name for GitHub webhook HMAC secret"
+  description = "Name of the Secrets Manager secret storing GitHub webhook HMAC"
   type        = string
   default     = "github-webhook-secret"
-}
-
-variable "github_webhook_secret" {
-  description = "The actual GitHub webhook HMAC secret"
-  type        = string
-  sensitive   = true
 }
 
 variable "github_oauth_token" {
@@ -78,10 +72,10 @@ variable "github_oauth_token" {
   sensitive   = true
 }
 
-variable "github_oauth_token_secret_name" {
-  description = "Name of Secrets Manager secret storing GitHub PAT"
+variable "github_webhook_secret" {
+  description = "GitHub webhook shared secret (HMAC token)"
   type        = string
-  default     = "hcp-ecs-github-token"
+  sensitive   = true
 }
 
 # ----------------------------------------------------------------------
