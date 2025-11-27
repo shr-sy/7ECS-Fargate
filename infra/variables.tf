@@ -5,10 +5,6 @@ variable "aws_region" {
   description = "AWS region where all resources will be deployed"
   type        = string
   default     = "us-east-1"
-  validation {
-    condition     = length(var.aws_region) > 0
-    error_message = "AWS region cannot be empty."
-  }
 }
 
 variable "project_name" {
@@ -18,7 +14,7 @@ variable "project_name" {
 }
 
 variable "environment" {
-  description = "Deployment environment (e.g., dev, qa, prod)"
+  description = "Deployment environment (dev, qa, prod)"
   type        = string
   validation {
     condition     = contains(["dev", "qa", "prod"], var.environment)
@@ -27,7 +23,15 @@ variable "environment" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub Settings (CodePipeline + Webhook)
+# Terraform Cloud User ARN (Required for IAM Assume Role)
+# ----------------------------------------------------------------------
+variable "terraform_user_arn" {
+  description = "ARN of the Terraform Cloud/HCP Terraform user/role"
+  type        = string
+}
+
+# ----------------------------------------------------------------------
+# GitHub Settings
 # ----------------------------------------------------------------------
 variable "github_owner" {
   description = "GitHub username or organization"
@@ -46,11 +50,10 @@ variable "github_branch" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub Personal Access Token (PAT)
-# Stored in AWS Secrets Manager
+# GitHub Personal Access Token (PAT) - Stored in Secrets Manager
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
-  description = "AWS Secrets Manager name storing PAT"
+  description = "Name of AWS Secrets Manager secret storing GitHub PAT"
   type        = string
 }
 
@@ -64,12 +67,12 @@ variable "github_oauth_token" {
 # GitHub Webhook Secret (HMAC Key)
 # ----------------------------------------------------------------------
 variable "github_webhook_secret_name" {
-  description = "AWS Secrets Manager name storing webhook secret"
+  description = "Name of AWS Secrets Manager secret storing webhook secret"
   type        = string
 }
 
 variable "github_webhook_secret" {
-  description = "HMAC Secret used for GitHub → CodePipeline webhook"
+  description = "HMAC secret for GitHub → CodePipeline webhook"
   type        = string
   sensitive   = true
 }
@@ -93,7 +96,7 @@ variable "services" {
 }
 
 variable "service_ports" {
-  description = "Port mapping for each microservice container"
+  description = "Port mapping for each microservice"
   type        = map(number)
 
   default = {
@@ -108,7 +111,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary service ALB will forward HTTP traffic to"
+  description = "Primary microservice used by ALB for routing"
   type        = string
   default     = "auth"
 }
@@ -132,18 +135,10 @@ variable "public_subnets" {
 }
 
 variable "private_subnets" {
-  description = "Private subnets used for ECS Fargate Tasks"
+  description = "Private subnets used for ECS Fargate"
   type        = list(string)
   default = [
     "10.0.11.0/24",
     "10.0.12.0/24"
   ]
-}
-
-# ----------------------------------------------------------------------
-# IAM Role Terraform is using (for trust relationships)
-# ----------------------------------------------------------------------
-variable "terraform_role_name" {
-  description = "IAM role used by Terraform (optional)"
-  type        = string
 }
