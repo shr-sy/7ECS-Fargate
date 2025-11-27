@@ -2,7 +2,7 @@ provider "aws" {
   region                  = var.aws_region
   skip_metadata_api_check = true
 
-  # Terraform will assume the execution role automatically
+  # Automatically assume the role that Terraform creates
   assume_role {
     role_arn = aws_iam_role.terraform_execution_role.arn
   }
@@ -10,6 +10,7 @@ provider "aws" {
   default_tags {
     tags = {
       Project = var.project_name
+      Environment = var.environment
     }
   }
 }
