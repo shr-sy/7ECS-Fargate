@@ -6,24 +6,27 @@ env:
 
 phases:
   pre_build:
-  commands:
-    - echo "==== PRE-BUILD START ===="
-    - echo "AWS CLI version:"
-    - aws --version
+    commands:
+      - echo "==== PRE-BUILD START ===="
+      - echo "AWS CLI version:"
+      - aws --version
 
-    - export AWS_DEFAULT_REGION=$AWS_REGION
-    - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - export AWS_DEFAULT_REGION=$AWS_REGION
+      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-    - echo "Using AWS Account ID: $AWS_ACCOUNT_ID"
-    - echo "Using Region: $AWS_DEFAULT_REGION"
+      - echo "Using AWS Account ID: $AWS_ACCOUNT_ID"
+      - echo "Using Region: $AWS_DEFAULT_REGION"
 
-    - echo "Microservices Directory: $MICRO_DIR"
-    - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR directory not found!"
+      - echo "Microservices Directory: $MICRO_DIR"
+      - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR directory not found!"
 
-    - echo "Logging into Amazon ECR..."
-    - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - echo "Logging into Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
+          docker login --username AWS --password-stdin \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
-    - echo "==== PRE-BUILD COMPLETE ===="
+      - echo "==== PRE-BUILD COMPLETE ===="
+
   build:
     commands:
       - echo "==== BUILD START ===="
