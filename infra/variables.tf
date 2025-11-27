@@ -24,7 +24,7 @@ variable "environment" {
 }
 
 # ----------------------------------------------------------------------
-# Terraform Cloud/HCP Execution Role
+# Terraform Cloud Execution Role
 # ----------------------------------------------------------------------
 variable "terraform_role_name" {
   description = "IAM role name used by HCP Terraform"
@@ -52,7 +52,7 @@ variable "github_branch" {
 }
 
 # ----------------------------------------------------------------------
-# Secrets Manager: Secret Names
+# GitHub Secrets (IMPORTANT)
 # ----------------------------------------------------------------------
 variable "github_oauth_secret_id" {
   description = "Secret name or ARN storing GitHub OAuth/PAT token"
@@ -61,13 +61,31 @@ variable "github_oauth_secret_id" {
 }
 
 variable "github_webhook_secret_name" {
-  description = "Secret name storing GitHub webhook secret"
+  description = "Secrets Manager name for GitHub webhook HMAC secret"
   type        = string
   default     = "github-webhook-secret"
 }
 
+variable "github_webhook_secret" {
+  description = "The actual GitHub webhook HMAC secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_oauth_token" {
+  description = "GitHub OAuth/PAT token"
+  type        = string
+  sensitive   = true
+}
+
+variable "github_oauth_token_secret_name" {
+  description = "Name of Secrets Manager secret storing GitHub PAT"
+  type        = string
+  default     = "hcp-ecs-github-token"
+}
+
 # ----------------------------------------------------------------------
-# Microservices & Ports
+# Microservices
 # ----------------------------------------------------------------------
 variable "services" {
   description = "List of microservices for ECS, ECR, and CodeBuild"
@@ -100,7 +118,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary microservice used by ALB"
+  description = "Primary service routed via ALB"
   type        = string
   default     = "auth"
 }
@@ -115,30 +133,22 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnets" {
-  description = "Public subnets used by ALB"
+  description = "Public subnets for ALB"
   type        = list(string)
-
-  default = [
-    "10.0.1.0/24",
-    "10.0.2.0/24"
-  ]
+  default     = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
 variable "private_subnets" {
-  description = "Private subnets used for ECS Fargate"
+  description = "Private subnets for ECS Fargate"
   type        = list(string)
-
-  default = [
-    "10.0.11.0/24",
-    "10.0.12.0/24"
-  ]
+  default     = ["10.0.11.0/24", "10.0.12.0/24"]
 }
 
 # ----------------------------------------------------------------------
-# S3 Bucket Settings (CodePipeline Artifacts)
+# S3 Bucket Settings
 # ----------------------------------------------------------------------
 variable "bucket_suffix" {
-  description = "Suffix used in the artifact bucket name"
+  description = "Suffix for CodePipeline artifact bucket"
   type        = string
   default     = "cp"
 }
