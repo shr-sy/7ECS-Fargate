@@ -1,9 +1,4 @@
 ############################################
-# Get AWS Account ID
-############################################
-data "aws_caller_identity" "current" {}
-
-############################################
 # CodeBuild Project
 ############################################
 resource "aws_codebuild_project" "build_all" {
