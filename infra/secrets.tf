@@ -3,7 +3,7 @@
 ###############################################
 resource "aws_secretsmanager_secret" "github_oauth_secret" {
   name                    = var.github_oauth_token_secret_name
-  recovery_window_in_days = 0   # <--- Force delete without recovery
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "github_oauth_secret_version" {
@@ -16,7 +16,7 @@ resource "aws_secretsmanager_secret_version" "github_oauth_secret_version" {
 ###############################################
 resource "aws_secretsmanager_secret" "github_webhook_secret" {
   name                    = var.github_webhook_secret_name
-  recovery_window_in_days = 0   # <--- Force delete without recovery
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "github_webhook_secret_version" {
