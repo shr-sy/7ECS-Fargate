@@ -6,14 +6,30 @@ resource "random_id" "bucket_id" {
 }
 
 ############################################
-# PIPELINE S3 BUCKET
+# PIPELINE S3 BUCKET (for CodePipeline artifacts)
 ############################################
 resource "aws_s3_bucket" "cp_bucket" {
-  bucket = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
+  bucket        = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
   force_destroy = true
+
   tags = {
     Name        = "${var.project_name}-cp-bucket"
     Environment = var.environment
+  }
+}
+
+# Recommended bucket ACL (private)
+resource "aws_s3_bucket_acl" "cp_bucket_acl" {
+  bucket = aws_s3_bucket.cp_bucket.id
+  acl    = "private"
+}
+
+# Ownership controls (prevents cross-account issues when CodePipeline uploads objects)
+resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
+  bucket = aws_s3_bucket.cp_bucket.id
+
+  rule {
+    object_ownership = "BucketOwnerPreferred"
   }
 }
 
@@ -26,7 +42,7 @@ data "aws_secretsmanager_secret_version" "github_token" {
 }
 
 ############################################
-# CODEPIPELINE RESOURCE
+# CODEPIPELINE RESOURCE (Source, Build, Deploy per-service)
 ############################################
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
@@ -37,9 +53,7 @@ resource "aws_codepipeline" "pipeline" {
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
-  #########################
-  # SOURCE (GitHub)
-  #########################
+  # SOURCE stage (GitHub)
   stage {
     name = "Source"
 
@@ -56,14 +70,12 @@ resource "aws_codepipeline" "pipeline" {
         Repo                 = var.github_repo_name
         Branch               = var.github_branch
         OAuthToken           = data.aws_secretsmanager_secret_version.github_token.secret_string
-        PollForSourceChanges = false
+        PollForSourceChanges = "false"
       }
     }
   }
 
-  #########################
-  # BUILD (CodeBuild)
-  #########################
+  # BUILD stage (CodeBuild)
   stage {
     name = "Build"
 
@@ -82,27 +94,34 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  #########################
-  # DEPLOY (ECS)
-  #########################
+  # DEPLOY stage — one action per service (multi-service)
   stage {
     name = "Deploy"
 
-    action {
-      name            = "ECSDeploy"
-      category        = "Deploy"
-      owner           = "AWS"
-      provider        = "ECS"
-      version         = "1"
-      input_artifacts = ["build_output"]
+    dynamic "action" {
+      for_each = var.services
+      content {
+        name            = "ECSDeploy-${action.value}"
+        category        = "Deploy"
+        owner           = "AWS"
+        provider        = "ECS"
+        version         = "1"
+        input_artifacts = ["build_output"]
 
-      configuration = {
-        ClusterName = aws_ecs_cluster.main.name
-        ServiceName = aws_ecs_service.svc[var.main_service].name
-        FileName    = "imagedefinitions.json"
+        configuration = {
+          ClusterName = aws_ecs_cluster.main.name
+          ServiceName = aws_ecs_service.svc[action.value].name
+          FileName    = "imagedefinitions.json"
+        }
       }
     }
   }
+
+  # Ensure pipeline creation happens after CodeBuild/Cluster/Services exist
+  depends_on = [
+    aws_codebuild_project.build_all,
+    aws_ecs_cluster.main
+  ]
 }
 
 ############################################
@@ -122,6 +141,8 @@ resource "aws_codepipeline_webhook" "github_webhook" {
     json_path    = "$.ref"
     match_equals = "refs/heads/${var.github_branch}"
   }
+
+  depends_on = [aws_codepipeline.pipeline]
 }
 
 ############################################
