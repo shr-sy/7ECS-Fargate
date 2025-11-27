@@ -10,7 +10,7 @@ resource "random_id" "bucket_id" {
 ############################################
 resource "aws_s3_bucket" "cp_bucket" {
   bucket = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
-
+  force_destroy = true
   tags = {
     Name        = "${var.project_name}-cp-bucket"
     Environment = var.environment
