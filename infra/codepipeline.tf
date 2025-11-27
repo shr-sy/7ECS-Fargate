@@ -41,17 +41,29 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
 }
 
 ############################################
-# SECRETS MANAGER LOOKUP
+# SECRETS MANAGER (AUTO-CREATED)
 ############################################
 
-# Get secret metadata (NAME or ARN)
-data "aws_secretsmanager_secret" "github_oauth_secret" {
-  name = var.github_oauth_secret_id
+# GitHub PAT Secret (create if missing)
+resource "aws_secretsmanager_secret" "github_oauth_secret" {
+  name        = var.github_oauth_token_secret_name
+  description = "GitHub OAuth/PAT token for CodePipeline"
 }
 
-# Get latest version
-data "aws_secretsmanager_secret_version" "github_token" {
-  secret_id = data.aws_secretsmanager_secret.github_oauth_secret.id
+resource "aws_secretsmanager_secret_version" "github_oauth_secret_value" {
+  secret_id     = aws_secretsmanager_secret.github_oauth_secret.id
+  secret_string = var.github_oauth_token
+}
+
+# GitHub Webhook Secret (create if missing)
+resource "aws_secretsmanager_secret" "github_webhook_secret" {
+  name        = var.github_webhook_secret_name
+  description = "GitHub Webhook HMAC Secret"
+}
+
+resource "aws_secretsmanager_secret_version" "github_webhook_secret_value" {
+  secret_id     = aws_secretsmanager_secret.github_webhook_secret.id
+  secret_string = var.github_webhook_secret
 }
 
 ############################################
@@ -81,7 +93,10 @@ resource "aws_codepipeline" "pipeline" {
         Owner                = var.github_owner
         Repo                 = var.github_repo_name
         Branch               = var.github_branch
-        OAuthToken           = data.aws_secretsmanager_secret_version.github_token.secret_string
+
+        # Use the Terraform-created secret value
+        OAuthToken           = aws_secretsmanager_secret_version.github_oauth_secret_value.secret_string
+
         PollForSourceChanges = "false"
       }
     }
@@ -144,7 +159,7 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   authentication  = "GITHUB_HMAC"
 
   authentication_configuration {
-    secret_token = var.github_webhook_secret
+    secret_token = aws_secretsmanager_secret_version.github_webhook_secret_value.secret_string
   }
 
   filter {
@@ -158,3 +173,4 @@ resource "aws_codepipeline_webhook" "github_webhook" {
 output "github_webhook_url" {
   value = aws_codepipeline_webhook.github_webhook.url
 }
+
