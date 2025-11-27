@@ -44,12 +44,12 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
 # SECRETS MANAGER LOOKUP
 ############################################
 
-# 1. Get secret metadata
+# Get secret metadata (NAME or ARN)
 data "aws_secretsmanager_secret" "github_oauth_secret" {
-  arn = var.github_oauth_secret_id
+  secret_id = var.github_oauth_secret_id
 }
 
-# 2. Get latest version
+# Get latest version
 data "aws_secretsmanager_secret_version" "github_token" {
   secret_id = data.aws_secretsmanager_secret.github_oauth_secret.id
 }
@@ -66,9 +66,6 @@ resource "aws_codepipeline" "pipeline" {
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
-  ############################################
-  # SOURCE STAGE
-  ############################################
   stage {
     name = "Source"
 
@@ -90,9 +87,6 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ############################################
-  # BUILD STAGE
-  ############################################
   stage {
     name = "Build"
 
@@ -111,9 +105,6 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ############################################
-  # DEPLOY STAGE (LOOP THROUGH SERVICES)
-  ############################################
   stage {
     name = "Deploy"
 
@@ -164,9 +155,6 @@ resource "aws_codepipeline_webhook" "github_webhook" {
   depends_on = [aws_codepipeline.pipeline]
 }
 
-############################################
-# OUTPUTS
-############################################
 output "github_webhook_url" {
   value = aws_codepipeline_webhook.github_webhook.url
 }
