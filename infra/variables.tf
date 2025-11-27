@@ -16,6 +16,7 @@ variable "project_name" {
 variable "environment" {
   description = "Deployment environment (dev, qa, prod)"
   type        = string
+
   validation {
     condition     = contains(["dev", "qa", "prod"], var.environment)
     error_message = "Environment must be one of: dev, qa, prod."
@@ -66,7 +67,7 @@ variable "github_webhook_secret_name" {
 }
 
 # ----------------------------------------------------------------------
-# Secrets Supplied By HCP Terraform (Values)
+# Secrets Supplied by HCP Terraform (Actual values)
 # ----------------------------------------------------------------------
 variable "github_oauth_token" {
   description = "GitHub Personal Access Token"
@@ -84,7 +85,7 @@ variable "github_webhook_secret" {
 # Microservices & Ports
 # ----------------------------------------------------------------------
 variable "services" {
-  description = "List of microservices for ECS, ECR, CodeBuild"
+  description = "List of microservices for ECS, ECR, and CodeBuild"
   type        = list(string)
 
   default = [
@@ -129,8 +130,9 @@ variable "vpc_cidr" {
 }
 
 variable "public_subnets" {
-  description = "Public subnets used for ALB"
+  description = "Public subnets used by ALB"
   type        = list(string)
+
   default = [
     "10.0.1.0/24",
     "10.0.2.0/24"
@@ -140,6 +142,7 @@ variable "public_subnets" {
 variable "private_subnets" {
   description = "Private subnets used for ECS Fargate"
   type        = list(string)
+
   default = [
     "10.0.11.0/24",
     "10.0.12.0/24"
