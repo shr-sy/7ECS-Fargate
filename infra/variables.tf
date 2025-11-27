@@ -148,3 +148,52 @@ variable "private_subnets" {
     "10.0.12.0/24"
   ]
 }
+
+############################################
+# VARIABLES
+############################################
+
+variable "project_name" {
+  description = "Project name prefix used for resources"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name (dev|qa|prod)"
+  type        = string
+  default     = "dev"
+}
+
+variable "bucket_suffix" {
+  description = "Suffix used in the artifact bucket name"
+  type        = string
+  default     = "cp"
+}
+
+variable "github_owner" {
+  type = string
+}
+
+variable "github_repo_name" {
+  type = string
+}
+
+variable "github_branch" {
+  type    = string
+  default = "main"
+}
+
+variable "github_oauth_secret_id" {
+  description = "Secrets Manager secret name or ARN containing GitHub OAuth token"
+  type        = string
+}
+
+variable "github_webhook_secret" {
+  type = string
+}
+
+variable "services" {
+  description = "List/map of service names used in the Deploy stage"
+  type        = any
+}
+
