@@ -12,7 +12,7 @@ phases:
       - echo "AWS CLI version:"
       - aws --version
 
-      # Auto-detect region provided by CodeBuild
+      # Auto-detect region from CodeBuild
       - export AWS_DEFAULT_REGION=$AWS_REGION
 
       # Auto-detect AWS Account ID
@@ -23,13 +23,13 @@ phases:
 
       # Debug MICRO_DIR
       - echo "Microservices Directory: $MICRO_DIR"
-      - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR not found!"
+      - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR directory not found!"
 
-      # Docker login
+      # ECR Docker Login
       - echo "Logging into Amazon ECR..."
       - >
         aws ecr get-login-password --region $AWS_DEFAULT_REGION |
-        docker login --username AWS --password-stdin
+        docker login --username AWS --password-stdin \
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
       - echo "==== PRE-BUILD COMPLETE ===="
@@ -39,6 +39,7 @@ phases:
       - echo "==== BUILD START ===="
       - echo "Building and pushing microservices in '$MICRO_DIR'..."
 
+      # Build and push all microservices
       - |
         for svc in $MICRO_DIR/*; do
           NAME=$(basename "$svc")
@@ -52,7 +53,7 @@ phases:
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
-          # Push image
+          # Push images
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
@@ -64,31 +65,31 @@ phases:
       - echo "==== POST-BUILD START ===="
       - echo "Generating imagedefinitions.json..."
 
-      - |
+      - >
         python3 - << 'EOF'
-        import os, json
+import os, json
 
-        micro_dir = "microservices"
-        services = [
-            s for s in os.listdir(micro_dir)
-            if os.path.isdir(os.path.join(micro_dir, s))
-        ]
+micro_dir = "microservices"
+services = [
+    s for s in os.listdir(micro_dir)
+    if os.path.isdir(os.path.join(micro_dir, s))
+]
 
-        account = os.environ["AWS_ACCOUNT_ID"]
-        region = os.environ["AWS_DEFAULT_REGION"]
-        commit = os.environ["CODEBUILD_RESOLVED_SOURCE_VERSION"]
+account = os.environ["AWS_ACCOUNT_ID"]
+region = os.environ["AWS_DEFAULT_REGION"]
+commit = os.environ["CODEBUILD_RESOLVED_SOURCE_VERSION"]
 
-        output = [{
-            "name": s,
-            "imageUri": f"{account}.dkr.ecr.{region}.amazonaws.com/{s}:{commit}"
-        } for s in services]
+output = [{
+    "name": s,
+    "imageUri": f"{account}.dkr.ecr.{region}.amazonaws.com/{s}:{commit}"
+} for s in services]
 
-        with open("imagedefinitions.json", "w") as f:
-            f.write(json.dumps(output, indent=2))
+with open("imagedefinitions.json", "w") as f:
+    f.write(json.dumps(output, indent=2))
 
-        print("Generated imagedefinitions.json:")
-        print(json.dumps(output, indent=2))
-        EOF
+print("Generated imagedefinitions.json:")
+print(json.dumps(output, indent=2))
+EOF
 
       - echo "==== POST-BUILD COMPLETE ===="
 
