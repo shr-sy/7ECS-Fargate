@@ -133,3 +133,8 @@ variable "private_subnets" {
     "10.0.12.0/24"
   ]
 }
+
+variable "terraform_role_name" {
+  description = "IAM role Terraform is using"
+  type        = string
+}
