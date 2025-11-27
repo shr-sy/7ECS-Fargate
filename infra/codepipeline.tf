@@ -18,22 +18,31 @@ resource "aws_s3_bucket" "cp_bucket" {
   }
 }
 
-# Recommended — bucket ACL disabled (modern AWS best practice)
-resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
-  bucket                  = aws_s3_bucket.cp_bucket.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-# Required for cross-account CodePipeline object uploads
+############################################
+# REQUIRED — Ownership Controls (MUST COME BEFORE ACL/PAB)
+############################################
 resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
   bucket = aws_s3_bucket.cp_bucket.id
 
   rule {
     object_ownership = "BucketOwnerPreferred"
   }
+}
+
+############################################
+# PUBLIC ACCESS BLOCK — Follow AWS best practices
+############################################
+resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
+  bucket = aws_s3_bucket.cp_bucket.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+
+  depends_on = [
+    aws_s3_bucket_ownership_controls.cp_bucket_controls
+  ]
 }
 
 ############################################
@@ -132,6 +141,7 @@ resource "aws_codepipeline" "pipeline" {
     aws_codebuild_project.build_all,
     aws_ecs_cluster.main,
     aws_ecs_service.svc,
+    aws_s3_bucket_public_access_block.cp_bucket_block
   ]
 }
 
