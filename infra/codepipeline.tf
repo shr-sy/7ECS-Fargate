@@ -46,7 +46,7 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
 
 # Get secret metadata (NAME or ARN)
 data "aws_secretsmanager_secret" "github_oauth_secret" {
-  secret_id = var.github_oauth_secret_id
+  arn = var.github_oauth_secret_id
 }
 
 # Get latest version
