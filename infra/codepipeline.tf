@@ -1,26 +1,28 @@
 ############################################
-# RANDOM ID FOR ARTIFACT BUCKET
+# LOCALS
 ############################################
-resource "random_id" "bucket_id" {
-  byte_length = 4
+
+locals {
+  cp_bucket_name = lower("${var.project_name}-${var.bucket_suffix}-${var.environment}")
 }
 
 ############################################
-# S3 BUCKET FOR CODEPIPELINE ARTIFACTS
+# S3 BUCKET
 ############################################
+
 resource "aws_s3_bucket" "cp_bucket" {
-  bucket        = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
-  force_destroy = true
+  bucket = local.cp_bucket_name
 
   tags = {
     Name        = "${var.project_name}-cp-bucket"
     Environment = var.environment
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
-############################################
-# REQUIRED — Ownership Controls (MUST COME BEFORE ACL/PAB)
-############################################
 resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -29,9 +31,6 @@ resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
   }
 }
 
-############################################
-# PUBLIC ACCESS BLOCK — Follow AWS best practices
-############################################
 resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -46,30 +45,30 @@ resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
 }
 
 ############################################
-# FETCH GITHUB TOKEN FROM SECRETS MANAGER
+# SECRETS MANAGER
 ############################################
+
+data "aws_secretsmanager_secret" "github_oauth_secret" {
+  secret_id = var.github_oauth_secret_id
+}
+
 data "aws_secretsmanager_secret_version" "github_token" {
-  secret_id = aws_secretsmanager_secret.github_oauth_secret.id
+  secret_id = data.aws_secretsmanager_secret.github_oauth_secret.id
 }
 
 ############################################
 # CODEPIPELINE
 ############################################
+
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
-  ############################################
-  # ARTIFACT STORE (S3)
-  ############################################
   artifact_store {
     type     = "S3"
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
-  ############################################
-  # SOURCE STAGE — GitHub
-  ############################################
   stage {
     name = "Source"
 
@@ -91,9 +90,6 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ############################################
-  # BUILD STAGE — CodeBuild
-  ############################################
   stage {
     name = "Build"
 
@@ -112,9 +108,6 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  ############################################
-  # DEPLOY STAGE — One ECS Deploy per service
-  ############################################
   stage {
     name = "Deploy"
 
@@ -140,14 +133,14 @@ resource "aws_codepipeline" "pipeline" {
   depends_on = [
     aws_codebuild_project.build_all,
     aws_ecs_cluster.main,
-    aws_ecs_service.svc,
-    aws_s3_bucket_public_access_block.cp_bucket_block
+    aws_s3_bucket_public_access_block.cp_bucket_block,
   ]
 }
 
 ############################################
-# PIPELINE WEBHOOK (GITHUB → CODEPIPELINE)
+# WEBHOOK
 ############################################
+
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
   target_pipeline = aws_codepipeline.pipeline.name
@@ -167,8 +160,9 @@ resource "aws_codepipeline_webhook" "github_webhook" {
 }
 
 ############################################
-# EXPORT WEBHOOK URL
+# OUTPUT
 ############################################
+
 output "github_webhook_url" {
   value = aws_codepipeline_webhook.github_webhook.url
 }
