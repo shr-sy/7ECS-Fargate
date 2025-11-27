@@ -4,12 +4,14 @@ env:
   variables:
     AWS_DEFAULT_REGION: "us-east-1"
     MICRO_DIR: "microservices"
+    # Injected automatically from Terraform in codebuild.tf
+    AWS_ACCOUNT_ID: ""
 
 phases:
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
-      - echo "Installing AWS CLI version:"
+      - echo "AWS CLI version:"
       - aws --version
 
       - echo "Logging into Amazon ECR..."
@@ -22,20 +24,22 @@ phases:
   build:
     commands:
       - echo "==== BUILD START ===="
-      - echo "Building + pushing all microservices inside '$MICRO_DIR' folder..."
+      - echo "Building and pushing microservices in '$MICRO_DIR'..."
 
       - |
         for svc in $MICRO_DIR/*; do
           NAME=$(basename $svc)
-
           echo "---- Building service: $NAME ----"
 
+          # Build image
           docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
 
+          # Tag using commit hash
           docker tag \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
             $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
 
+          # Push images
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
         done
@@ -45,26 +49,27 @@ phases:
   post_build:
     commands:
       - echo "==== POST-BUILD START ===="
-      - echo "Creating imagedefinitions.json for ECS CodeDeploy..."
+      - echo "Generating imagedefinitions.json..."
 
       - |
         python3 - << 'PY'
-        import json, os
+        import os, json
 
         micro_dir = "microservices"
         services = [
             s for s in os.listdir(micro_dir)
             if os.path.isdir(os.path.join(micro_dir, s))
         ]
+
         account = os.environ["AWS_ACCOUNT_ID"]
         region = os.environ["AWS_DEFAULT_REGION"]
+        commit = os.environ["CODEBUILD_RESOLVED_SOURCE_VERSION"]
 
-        output = []
-        for s in services:
-            output.append({
-                "name": s,
-                "imageUri": f"{account}.dkr.ecr.{region}.amazonaws.com/{s}:latest"
-            })
+        # Generate ECS deploy file
+        output = [{
+            "name": s,
+            "imageUri": f"{account}.dkr.ecr.{region}.amazonaws.com/{s}:{commit}"
+        } for s in services]
 
         with open("imagedefinitions.json", "w") as f:
             f.write(json.dumps(output, indent=2))
@@ -74,6 +79,7 @@ phases:
 PY
 
       - echo "==== POST-BUILD COMPLETE ===="
+
 
 artifacts:
   files:
