@@ -24,10 +24,9 @@ variable "environment" {
 
 # ----------------------------------------------------------------------
 # Terraform Cloud/HCP Execution Role
-# (This is created by Terraform so its ARN will be known automatically)
 # ----------------------------------------------------------------------
 variable "terraform_role_name" {
-  description = "IAM role name used by HCP Terraform to assume into AWS"
+  description = "IAM role name used by HCP Terraform"
   type        = string
   default     = "terraform-execution-role"
 }
@@ -52,25 +51,25 @@ variable "github_branch" {
 }
 
 # ----------------------------------------------------------------------
-# GitHub Secrets Manager Config (Names only, NOT values)
+# GitHub Secrets Manager Config (Names only)
 # ----------------------------------------------------------------------
 variable "github_oauth_token_secret_name" {
-  description = "Name of Secrets Manager secret that stores the GitHub PAT"
+  description = "Name of Secrets Manager secret storing GitHub PAT"
   type        = string
   default     = "hcp-ecs-github-token"
 }
 
 variable "github_webhook_secret_name" {
-  description = "Name of Secrets Manager secret storing GitHub webhook secret"
+  description = "Name of Secrets Manager secret storing webhook secret"
   type        = string
   default     = "github-webhook-secret"
 }
 
 # ----------------------------------------------------------------------
-# Sensitive Values (HCP Terraform workspace should provide these)
+# Secrets Supplied By HCP Terraform (Values)
 # ----------------------------------------------------------------------
 variable "github_oauth_token" {
-  description = "GitHub Personal Access Token (PAT)"
+  description = "GitHub Personal Access Token"
   type        = string
   sensitive   = true
 }
@@ -115,7 +114,7 @@ variable "service_ports" {
 }
 
 variable "main_service" {
-  description = "Primary microservice used by ALB for routing"
+  description = "Primary microservice used by ALB"
   type        = string
   default     = "auth"
 }
