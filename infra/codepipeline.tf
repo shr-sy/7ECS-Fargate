@@ -6,7 +6,7 @@ resource "random_id" "bucket_id" {
 }
 
 ############################################
-# PIPELINE S3 BUCKET (for CodePipeline artifacts)
+# S3 BUCKET FOR CODEPIPELINE ARTIFACTS
 ############################################
 resource "aws_s3_bucket" "cp_bucket" {
   bucket        = lower("${var.project_name}-cp-${random_id.bucket_id.hex}")
@@ -18,13 +18,16 @@ resource "aws_s3_bucket" "cp_bucket" {
   }
 }
 
-# Recommended bucket ACL (private)
-resource "aws_s3_bucket_acl" "cp_bucket_acl" {
-  bucket = aws_s3_bucket.cp_bucket.id
-  acl    = "private"
+# Recommended — bucket ACL disabled (modern AWS best practice)
+resource "aws_s3_bucket_public_access_block" "cp_bucket_block" {
+  bucket                  = aws_s3_bucket.cp_bucket.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-# Ownership controls (prevents cross-account issues when CodePipeline uploads objects)
+# Required for cross-account CodePipeline object uploads
 resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
   bucket = aws_s3_bucket.cp_bucket.id
 
@@ -34,26 +37,30 @@ resource "aws_s3_bucket_ownership_controls" "cp_bucket_controls" {
 }
 
 ############################################
-# FETCH GITHUB OAUTH TOKEN FROM SECRETS MANAGER
+# FETCH GITHUB TOKEN FROM SECRETS MANAGER
 ############################################
 data "aws_secretsmanager_secret_version" "github_token" {
-  secret_id  = aws_secretsmanager_secret.github_oauth_secret.id
-  depends_on = [aws_secretsmanager_secret_version.github_oauth_secret_version]
+  secret_id = aws_secretsmanager_secret.github_oauth_secret.id
 }
 
 ############################################
-# CODEPIPELINE RESOURCE (Source, Build, Deploy per-service)
+# CODEPIPELINE
 ############################################
 resource "aws_codepipeline" "pipeline" {
   name     = "${var.project_name}-pipeline"
   role_arn = aws_iam_role.codepipeline_role.arn
 
+  ############################################
+  # ARTIFACT STORE (S3)
+  ############################################
   artifact_store {
     type     = "S3"
     location = aws_s3_bucket.cp_bucket.bucket
   }
 
-  # SOURCE stage (GitHub)
+  ############################################
+  # SOURCE STAGE — GitHub
+  ############################################
   stage {
     name = "Source"
 
@@ -75,7 +82,9 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  # BUILD stage (CodeBuild)
+  ############################################
+  # BUILD STAGE — CodeBuild
+  ############################################
   stage {
     name = "Build"
 
@@ -94,14 +103,16 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  # DEPLOY stage — one action per service (multi-service)
+  ############################################
+  # DEPLOY STAGE — One ECS Deploy per service
+  ############################################
   stage {
     name = "Deploy"
 
     dynamic "action" {
       for_each = var.services
       content {
-        name            = "ECSDeploy-${action.value}"
+        name            = "Deploy-${action.value}"
         category        = "Deploy"
         owner           = "AWS"
         provider        = "ECS"
@@ -117,15 +128,15 @@ resource "aws_codepipeline" "pipeline" {
     }
   }
 
-  # Ensure pipeline creation happens after CodeBuild/Cluster/Services exist
   depends_on = [
     aws_codebuild_project.build_all,
-    aws_ecs_cluster.main
+    aws_ecs_cluster.main,
+    aws_ecs_service.svc,
   ]
 }
 
 ############################################
-# CODEPIPELINE WEBHOOK
+# PIPELINE WEBHOOK (GITHUB → CODEPIPELINE)
 ############################################
 resource "aws_codepipeline_webhook" "github_webhook" {
   name            = "${var.project_name}-github-webhook"
