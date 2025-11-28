@@ -21,9 +21,9 @@ phases:
       - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR directory not found!"
 
       - echo "Logging into Amazon ECR..."
-      - >
-        aws ecr get-login-password --region $AWS_DEFAULT_REGION |
-        docker login --username AWS --password-stdin
+      - |
+        aws ecr get-login-password --region $AWS_DEFAULT_REGION | \
+        docker login --username AWS --password-stdin \
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
       - echo "==== PRE-BUILD COMPLETE ===="
