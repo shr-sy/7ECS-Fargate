@@ -1,7 +1,20 @@
+# ---- Base Image ----
 FROM node:18-alpine
+
+# ---- Set Working Directory ----
 WORKDIR /app
+
+# ---- Copy Only Dependency Files (Improves Docker Cache) ----
 COPY package*.json ./
-RUN npm install --production
+
+# ---- Install Production Dependencies ----
+RUN npm ci --only=production
+
+# ---- Copy the Application Code ----
 COPY . .
+
+# ---- Expose the Port ----
 EXPOSE 3000
-CMD ["npm","start"]
+
+# ---- Start the App ----
+CMD ["npm", "start"]
