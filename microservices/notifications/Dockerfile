@@ -1,5 +1,5 @@
 # ---- Base Image ----
-FROM node:18-alpine
+FROM public.ecr.aws/docker/library/node:18-alpine
 
 # ---- Set Working Directory ----
 WORKDIR /app
