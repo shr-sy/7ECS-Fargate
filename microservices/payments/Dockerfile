@@ -7,8 +7,8 @@ WORKDIR /app
 # ---- Copy Only Dependency Files (for caching) ----
 COPY package*.json ./
 
-# ---- Install Production Dependencies ----
-RUN npm ci --only=production
+# ---- Install Production Dependencies (works without package-lock.json) ----
+RUN npm install --omit=dev
 
 # ---- Copy Application Code ----
 COPY . .
