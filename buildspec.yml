@@ -3,49 +3,34 @@ version: 0.2
 env:
   variables:
     MICRO_DIR: "microservices"
-    ECR_PREFIX: "hcp-ecs-7svc-"   # Prefix added to each folder name
+    ECR_PREFIX: "hcp-ecs-7svc-"
 
 phases:
 
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
-
-      # Auto-detect Account + Region
+      - echo "Detecting AWS Account ID..."
       - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       - export AWS_DEFAULT_REGION=$AWS_REGION
-
-      - echo "AWS Account ID: $AWS_ACCOUNT_ID"
-      - echo "AWS Region: $AWS_DEFAULT_REGION"
-      - echo "Microservices Directory: $MICRO_DIR"
-
-      # Login to ECR
-      - echo "Logging into Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION \
-          | docker login --username AWS --password-stdin \
-            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
-
+      - echo "AWS Account: $AWS_ACCOUNT_ID"
+      - echo "Region: $AWS_DEFAULT_REGION"
+      - echo "Logging into ECR..."
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
       - echo "==== PRE-BUILD COMPLETE ===="
 
   build:
     commands:
       - echo "==== BUILD START ===="
-
-      # Common tag for all images
       - export IMAGE_TAG=$(date +%Y%m%d%H%M%S)
-      - echo "Image tag = $IMAGE_TAG"
+      - echo "Image Tag = $IMAGE_TAG"
 
       - |
         for svc in $MICRO_DIR/*; do
-          NAME=$(basename "$svc")  # e.g., auth
-          REPO="${ECR_PREFIX}${NAME}"  # e.g., hcp-ecs-7svc-auth
-
-          echo "---- Building service: $NAME (repo: $REPO) ----"
-
-          # Build Docker image
+          NAME=$(basename "$svc")
+          REPO="${ECR_PREFIX}${NAME}"
+          echo "Building $NAME -> $REPO"
           docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${REPO}:$IMAGE_TAG $svc
-
-          # Push Docker image
           docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${REPO}:$IMAGE_TAG
         done
 
@@ -54,8 +39,6 @@ phases:
   post_build:
     commands:
       - echo "==== POST-BUILD START ===="
-
-      - echo "Generating imagedefinitions.json..."
 
       - |
         echo "[" > imagedefinitions.json
@@ -76,7 +59,6 @@ phases:
 
       - echo "Generated imagedefinitions.json:"
       - cat imagedefinitions.json
-
       - echo "==== POST-BUILD COMPLETE ===="
 
 artifacts:
