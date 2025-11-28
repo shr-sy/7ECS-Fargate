@@ -1,7 +1,20 @@
+# ---- Base Image ----
 FROM node:18-alpine
+
+# ---- Set Working Directory ----
 WORKDIR /app
+
+# ---- Copy Dependency Files ----
 COPY package*.json ./
-RUN npm install --production
+
+# ---- Install Production Dependencies ----
+RUN npm ci --only=production
+
+# ---- Copy Application Source ----
 COPY . .
+
+# ---- Expose Port ----
 EXPOSE 3000
-CMD ["npm","start"]
+
+# ---- Start App ----
+CMD ["npm", "start"]
