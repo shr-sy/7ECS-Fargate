@@ -2,47 +2,30 @@ version: 0.2
 
 env:
   variables:
-    MICRO_DIR: "microservices"
+    AWS_DEFAULT_REGION: "us-east-1"
 
 phases:
-
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
-      - echo "AWS CLI version:"
-      - aws --version
-
-      - export AWS_DEFAULT_REGION=$AWS_REGION
-      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
-      - echo "Using AWS Account ID: $AWS_ACCOUNT_ID"
-      - echo "Using Region: $AWS_DEFAULT_REGION"
-      - echo "Microservices Directory: $MICRO_DIR"
-
-      - ls -l $MICRO_DIR || echo "ERROR: MICRO_DIR directory not found!"
-
       - echo "Logging into Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
-
-      - echo "Creating ECR repositories if not exist..."
-      - for svc in $MICRO_DIR/*; do NAME=$(basename "$svc"); echo "Ensuring ECR repo exists for: $NAME"; aws ecr describe-repositories --repository-names "$NAME" >/dev/null 2>&1 || aws ecr create-repository --repository-name "$NAME" --image-scanning-configuration scanOnPush=true; done
-
-      - echo "==== PRE-BUILD COMPLETE ===="
+      - aws --version
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
 
   build:
     commands:
       - echo "==== BUILD START ===="
-      - echo "Building and pushing microservices in $MICRO_DIR..."
-
-      - for svc in $MICRO_DIR/*; do NAME=$(basename "$svc"); echo "Building service: $NAME"; docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:latest $svc; docker tag ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:${CODEBUILD_RESOLVED_SOURCE_VERSION}; docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:${CODEBUILD_RESOLVED_SOURCE_VERSION}; docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:latest; done
-
-      - echo "==== BUILD COMPLETE ===="
+      - IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+      - echo "Using IMAGE_TAG=$IMAGE_TAG"
+      - docker build -t $REPOSITORY_NAME:$IMAGE_TAG .
+      - docker tag $REPOSITORY_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
 
   post_build:
     commands:
       - echo "==== POST-BUILD START ===="
-      - echo "Generating imagedefinitions.json..."
-      - python3 generate_images.py
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
+      - echo "Writing imagedefinitions.json..."
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG" > imagedefinitions.json
       - echo "==== POST-BUILD COMPLETE ===="
 
 artifacts:
