@@ -2,30 +2,72 @@ version: 0.2
 
 env:
   variables:
-    AWS_DEFAULT_REGION: "us-east-1"
+    MICRO_DIR: "microservices"
 
 phases:
+
   pre_build:
     commands:
       - echo "==== PRE-BUILD START ===="
+
+      - echo "Detecting AWS Account ID..."
+      - export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - export AWS_DEFAULT_REGION=$AWS_REGION
+
+      - echo "AWS Account ID: $AWS_ACCOUNT_ID"
+      - echo "AWS Region: $AWS_DEFAULT_REGION"
+      - echo "Microservices Directory: $MICRO_DIR"
+
       - echo "Logging into Amazon ECR..."
-      - aws --version
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION \
+          | docker login --username AWS --password-stdin \
+            ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+
+      - echo "==== PRE-BUILD COMPLETE ===="
 
   build:
     commands:
       - echo "==== BUILD START ===="
-      - IMAGE_TAG=$(date +%Y%m%d%H%M%S)
-      - echo "Using IMAGE_TAG=$IMAGE_TAG"
-      - docker build -t $REPOSITORY_NAME:$IMAGE_TAG .
-      - docker tag $REPOSITORY_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
+
+      - export IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+      - echo "Image tag = $IMAGE_TAG"
+
+      - |
+        for svc in $MICRO_DIR/*; do
+          NAME=$(basename "$svc")
+          echo "---- Building service: $NAME ----"
+
+          # Build
+          docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:$IMAGE_TAG $svc
+
+          # Push
+          docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:$IMAGE_TAG
+        done
+
+      - echo "==== BUILD COMPLETE ===="
 
   post_build:
     commands:
       - echo "==== POST-BUILD START ===="
-      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG
-      - echo "Writing imagedefinitions.json..."
-      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPOSITORY_NAME:$IMAGE_TAG" > imagedefinitions.json
+
+      - echo "Generating imagedefinitions.json..."
+      - |
+        echo "[" > imagedefinitions.json
+        FIRST=true
+        for svc in $MICRO_DIR/*; do
+          NAME=$(basename "$svc")
+
+          if [ "$FIRST" = true ]; then
+            FIRST=false
+          else
+            echo "," >> imagedefinitions.json
+          fi
+
+          echo "  {\"name\": \"$NAME\", \"imageUri\": \"${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/$NAME:$IMAGE_TAG\"}" >> imagedefinitions.json
+        done
+        echo "]" >> imagedefinitions.json
+
+      - cat imagedefinitions.json
       - echo "==== POST-BUILD COMPLETE ===="
 
 artifacts:
