@@ -24,17 +24,7 @@ phases:
     commands:
       - echo "==== BUILD START ===="
       - echo "Building and pushing microservices in '$MICRO_DIR'..."
-      - |
-        for svc in $MICRO_DIR/*; do
-          NAME=$(basename "$svc")
-          echo "---- Building service: $NAME ----"
-          docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc
-          docker tag \
-            $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest \
-            $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest
-        done
+      - for svc in $MICRO_DIR/*; do NAME=$(basename "$svc"); echo "---- Building service: $NAME ----"; docker build -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $svc; docker tag $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION; docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:$CODEBUILD_RESOLVED_SOURCE_VERSION; docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$NAME:latest; done
       - echo "==== BUILD COMPLETE ===="
 
   post_build:
