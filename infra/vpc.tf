@@ -59,6 +59,35 @@ resource "aws_subnet" "private" {
 }
 
 #########################################
+# Elastic IP for NAT Gateway
+#########################################
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  depends_on = [aws_internet_gateway.igw]
+
+  tags = {
+    Name = "${var.project_name}-nat-eip"
+  }
+}
+
+#########################################
+# NAT Gateway (in Public Subnet[0])
+#########################################
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = values(aws_subnet.public)[0].id
+
+  depends_on = [
+    aws_internet_gateway.igw
+  ]
+
+  tags = {
+    Name = "${var.project_name}-nat-gateway"
+  }
+}
+
+#########################################
 # Public Route Table + Association
 #########################################
 resource "aws_route_table" "public" {
@@ -78,6 +107,29 @@ resource "aws_route_table_association" "public_assoc" {
   for_each = aws_subnet.public
 
   route_table_id = aws_route_table.public.id
+  subnet_id      = each.value.id
+}
+
+#########################################
+# Private Route Table + Association
+#########################################
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "${var.project_name}-private-rt"
+  }
+}
+
+resource "aws_route_table_association" "private_assoc" {
+  for_each = aws_subnet.private
+
+  route_table_id = aws_route_table.private.id
   subnet_id      = each.value.id
 }
 
@@ -116,7 +168,7 @@ resource "aws_security_group" "ecs_tasks" {
   dynamic "ingress" {
     for_each = var.service_ports
     content {
-      description     = "Allow ALB to ${ingress.key}"
+      description     = "Allow ALB to service on ${ingress.value}"
       from_port       = ingress.value
       to_port         = ingress.value
       protocol        = "tcp"
@@ -145,6 +197,10 @@ output "public_subnet_ids" {
 
 output "private_subnet_ids" {
   value = [for s in aws_subnet.private : s.id]
+}
+
+output "nat_gateway_id" {
+  value = aws_nat_gateway.nat.id
 }
 
 output "alb_sg_id" {
